@@ -1,12 +1,10 @@
 """
 OQ Wholesale Weekly Sync
 Runs every Thursday 6:30am AEST via GitHub Actions.
-Pulls the previous ordering week's data from Ordermentum
-and writes to Supabase for the analytics dashboard.
 
 Ordering week: Tuesday 00:00 AEST -> Monday 23:59 AEST
-Late order window: Tuesday 00:01 AEST -> Wednesday 23:59 AEST
-(orders placed Tue/Wed after the Monday 11:59pm deadline)
+Late order: placed Tuesday 00:01 -> Wednesday 23:59 AEST AND contains OQ-COF-WHS SKU.
+Only tracked partners (TRACKED_PARTNERS) are processed. All others ignored.
 """
 
 import os
@@ -28,12 +26,51 @@ SUPPLIER_ID  = "71bf79dc-4e3d-41b2-b232-6ebe51a297ab"
 
 AEST = timezone(timedelta(hours=10))
 
-# OQ venue names to exclude from wholesale analytics
-OQ_VENUES = [
-    "old quarter coffee merchants",
-    "oq ballina", "oq murwillumbah", "oq southport",
-    "oq coolangatta", "oq murbah",
-]
+# ── Tracked partners whitelist ────────────────────────────────────────────────
+# Only these retailer IDs are processed. Add new partners here when onboarded.
+# Format: "ordermentum_retailer_id": "Display Name"
+TRACKED_PARTNERS = {
+    "3ef953b2-e261-4367-8d90-ff33901c9825": "Rising Sun Roasters",
+    "97d05e3e-ff04-4e75-a8ef-4df59ffd4b5e": "Steam Espresso",
+    "c446588c-2712-4df9-8204-ed6616c3a6da": "Hitched",
+    "3c451bf8-5ac4-458c-bdb9-636352c79bda": "Crafty Monk Brewing",
+    "e12b57cc-6eb7-44b1-aff2-33d9b6aa354a": "Muse Yamba",
+    "7302e01e-ca4d-4268-8848-a2c3b9bc2f44": "Tel Aviv Yafo Express",
+    "085a631b-353f-4da2-9620-93b2fbb0525d": "5 Church Street",
+    "46e02c42-5582-4c54-afab-65bcb06c57a3": "Miquette",
+    "7f308671-4caa-494e-a43a-c15ee3bfb2f6": "Jetty Beach House Coffs Harbour",
+    "ab47b25c-c5e1-43a7-be32-4e24c35b5eea": "HAP Melbourne",
+    "c2f42d7f-f3fd-405e-9aba-24746e35daed": "Roxy Lane Cafe",
+    "df56d4e1-39f8-4d84-a4e2-fb471500ca2d": "Kefi Cafe",
+    "31d5d05a-7419-430a-8d5c-d673578b6822": "Golden Hash",
+    "fab2d4f8-e0fd-466b-ad50-a04a8e4171d3": "Rara Van Bar",
+    "63b6d5f9-c23f-454d-af22-429531855c8f": "Bowradise",
+    "1714ab15-545e-4f6e-82dc-e14a71723555": "Makers Grain Bakehouse",
+    "c1ff495f-cf3a-4e4c-b155-207f3f1f676f": "Ballandean General Store",
+    "201ac1b8-1be9-40e8-91bc-1198b9afc475": "Deepwater Bakery",
+    "046533de-4a89-4a8e-a4d6-afd9ab0e1e02": "M|Arts Cafe & Bar",
+    "10cb371c-5a32-4ac3-8074-d15d7c5db2aa": "Tayzies Coffee + Kitchen",
+    "b7cf496e-a8b8-496e-8ca7-b7a6623d7545": "Bar Henry",
+    "9daccd46-58d7-491d-8589-d90af3fca25b": "Pour Good",
+    "c3af10cb-5b3f-43a5-b0fa-548394c38fef": "The Quick Brown Fox Cafe",
+    "b6b8cc4d-fad1-4cf6-bc2a-c28fdfd23b3a": "Bep Coffee",
+    "9790cf30-0a9d-45ac-a990-1f84eef1a227": "Taco Love Bros",
+    "ab801b2c-09a6-474b-a56a-d7a06ae5a07b": "Capiche",
+    "bec061dc-0668-40a2-ba30-fe033072b6e6": "Capiche Kiosk",
+    "236041d5-50ef-4b89-918e-efef35576a20": "The Dove",
+    "2ac031e6-eb44-47d0-bb63-84c672242e54": "Tel Aviv Yafo",
+    "a024b93a-d3d7-40e8-8786-fe347ce20096": "Dent Coffee",
+    "f2e095d9-e178-4ebd-89db-1dad27bcb36d": "Bangalow Bread Co",
+    "702d98d0-663e-42e2-bb4b-1a5ccbaf8c67": "The Treehouse Byron Bay",
+    "fa44602b-a7cd-4b36-ab68-22a634df62a3": "Bang Bang Byron Bay",
+    "627e716c-d0f0-4e37-9df4-ce7a2c555cd3": "The Little Byronian",
+    "72f013b4-1da9-46fb-a04d-b2597a806825": "Williams Street Kitchen And Bar",
+    "ac0a7ef1-1cc5-4074-84e0-7a72c753566f": "The Olive Norfolk Island",
+    "d8660838-5877-41b5-9af5-1c42d10b00d9": "Alstonville Country Cottages",
+    "03b08341-ee46-4560-954c-865e58c15a1b": "North Coast Community College",
+    "16d0ded8-95aa-4d65-b350-442384dd6173": "Bob's Tacos",
+    "711e1512-494c-4970-ac75-7a93861394ae": "Raised Cold Brew",
+}
 
 # ── Ordermentum helpers ───────────────────────────────────────────────────────
 def om_auth():
@@ -54,14 +91,9 @@ def om_get(url, token):
         return {}
 
 
-def is_venue(name):
-    return any(v in name.lower() for v in OQ_VENUES)
-
-
-def is_coffee_sku(sku):
-    s = (sku or "").upper()
-    # Brewing coffee only: WHS bags/tins, not retail (OQ-COF-RT)
-    return s.startswith("OQ-COF") and not s.startswith("OQ-COF-RT")
+def is_whs_coffee_sku(sku):
+    """Only OQ-COF-WHS SKUs count — brewing wholesale coffee only."""
+    return (sku or "").upper().startswith("OQ-COF-WHS")
 
 
 def extract_kg(name, qty):
@@ -83,39 +115,34 @@ def extract_kg(name, qty):
 # ── Date range helpers ────────────────────────────────────────────────────────
 def ordering_week_range():
     """
-    Returns the most recently completed ordering week.
-    Week runs Tuesday 00:00 AEST -> Monday 23:59 AEST.
-    Script runs Thursday morning, so last week = Tue 8 days ago -> Mon 1 day ago.
+    Most recently completed ordering week: Tuesday 00:00 -> Monday 23:59 AEST.
+    Script runs Thursday so last week = Tue 8 days ago -> Mon 1 day ago.
     """
     now_aest = datetime.now(AEST)
-    # Find last Monday (1 day ago from Thursday = index 0)
     days_since_monday = (now_aest.weekday() - 0) % 7
     last_monday = now_aest - timedelta(days=days_since_monday)
     week_end = last_monday.replace(hour=23, minute=59, second=59, microsecond=0)
-    week_start = (last_monday - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
-
+    week_start = (last_monday - timedelta(days=6)).replace(
+        hour=0, minute=0, second=0, microsecond=0)
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     return (
         week_start.astimezone(timezone.utc).strftime(fmt),
         week_end.astimezone(timezone.utc).strftime(fmt),
-        week_start.date(),  # Used as the week_start key in Supabase
+        week_start.date(),
     )
 
 
-def is_late_order(created_at_str):
-    """
-    An order is late if placed Tuesday 00:01 -> Wednesday 23:59 AEST.
-    These are orders that missed the Monday 11:59pm deadline.
-    """
+def is_in_late_window(created_at_str):
+    """Tuesday 00:01 -> Wednesday 23:59 AEST = late window."""
     try:
-        dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00")).astimezone(AEST)
-        # Tuesday = weekday 1, Wednesday = weekday 2
+        dt = datetime.fromisoformat(
+            created_at_str.replace("Z", "+00:00")).astimezone(AEST)
         return dt.weekday() in (1, 2)
     except Exception:
         return False
 
 
-# ── Pull all orders for the week ──────────────────────────────────────────────
+# ── Pull orders ───────────────────────────────────────────────────────────────
 def pull_orders(token, start_utc, end_utc):
     all_orders = []
     page = 1
@@ -142,7 +169,9 @@ def pull_orders(token, start_utc, end_utc):
 # ── Process line items ────────────────────────────────────────────────────────
 def process_orders(all_orders, token):
     """
-    Returns dict keyed by retailer_id with aggregated weekly stats.
+    Only processes orders from TRACKED_PARTNERS.
+    Only counts OQ-COF-WHS SKUs for kg and late flag.
+    Partners with zero WHS coffee kg are excluded entirely.
     """
     partner_data = defaultdict(lambda: {
         "name": "",
@@ -151,39 +180,47 @@ def process_orders(all_orders, token):
         "order_count": 0,
         "late_count": 0,
         "revenue": 0.0,
-        "first_order_date": None,
     })
 
     for i, order in enumerate(all_orders):
         if order.get("cancelled"):
             continue
 
-        retailer_name = order.get("retailerName", "")
-        if is_venue(retailer_name):
+        retailer_id = order.get("retailerId", "")
+
+        # Skip anyone not on the whitelist
+        if retailer_id not in TRACKED_PARTNERS:
             continue
 
-        retailer_id = order.get("retailerId", "")
-        if not retailer_id:
+        detail = om_get(
+            f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
+
+        # Calculate WHS coffee kg for this order
+        whs_kg = 0.0
+        has_whs_coffee = False
+        for item in detail.get("lineItems", []):
+            sku = item.get("SKU", "") or ""
+            if not is_whs_coffee_sku(sku):
+                continue
+            has_whs_coffee = True
+            name = item.get("name", "") or ""
+            qty = item.get("quantity", 0) or 0
+            whs_kg += extract_kg(name, qty)
+
+        # Only count this order if it has WHS coffee
+        if not has_whs_coffee:
             continue
 
         p = partner_data[retailer_id]
-        p["name"] = retailer_name
+        p["name"] = TRACKED_PARTNERS[retailer_id]
         p["retailer_id"] = retailer_id
+        p["kg"] += whs_kg
         p["order_count"] += 1
         p["revenue"] += float(order.get("total", 0) or 0)
 
-        if is_late_order(order.get("createdAt", "")):
+        # Late only if WHS coffee order placed in Tue/Wed window
+        if is_in_late_window(order.get("createdAt", "")):
             p["late_count"] += 1
-
-        # Pull line items for kg
-        detail = om_get(f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
-        for item in detail.get("lineItems", []):
-            sku = item.get("SKU", "") or ""
-            if not is_coffee_sku(sku):
-                continue
-            name = item.get("name", "") or ""
-            qty = item.get("quantity", 0) or 0
-            p["kg"] += extract_kg(name, qty)
 
         if (i + 1) % 10 == 0:
             print(f"  Processed {i+1}/{len(all_orders)} orders...")
@@ -194,16 +231,12 @@ def process_orders(all_orders, token):
 
 # ── Supabase upserts ──────────────────────────────────────────────────────────
 def upsert_partner(sb, retailer_id, name, first_order_date=None):
-    """
-    Upsert partner record. Returns the Supabase partner UUID.
-    """
     existing = sb.table("partners").select("id, first_order_date").eq(
         "ordermentum_retailer_id", retailer_id
     ).execute()
 
     if existing.data:
         partner_id = existing.data[0]["id"]
-        # Update first_order_date if we have one and it's not set
         if first_order_date and not existing.data[0].get("first_order_date"):
             sb.table("partners").update({
                 "first_order_date": str(first_order_date),
@@ -219,7 +252,8 @@ def upsert_partner(sb, retailer_id, name, first_order_date=None):
         return result.data[0]["id"]
 
 
-def upsert_weekly_order(sb, partner_id, week_start, kg, order_count, late_count, revenue):
+def upsert_weekly_order(sb, partner_id, week_start, kg, order_count,
+                        late_count, revenue):
     sb.table("weekly_orders").upsert({
         "partner_id": partner_id,
         "week_start": str(week_start),
@@ -231,11 +265,8 @@ def upsert_weekly_order(sb, partner_id, week_start, kg, order_count, late_count,
 
 
 def refresh_order_summary(sb, partner_id):
-    """
-    Recalculates LTV, total orders, late rate, avg annual value,
-    avg kg/week, and years as customer from all historical weekly_orders.
-    """
-    rows = sb.table("weekly_orders").select("*").eq("partner_id", partner_id).execute()
+    rows = sb.table("weekly_orders").select("*").eq(
+        "partner_id", partner_id).execute()
     if not rows.data:
         return
 
@@ -243,14 +274,17 @@ def refresh_order_summary(sb, partner_id):
     total_orders  = sum(int(r["order_count"] or 0) for r in rows.data)
     total_late    = sum(int(r["late_order_count"] or 0) for r in rows.data)
     total_kg      = sum(float(r["kg_ordered"] or 0) for r in rows.data)
-    late_rate     = round((total_late / total_orders * 100), 2) if total_orders > 0 else 0
+    late_rate     = round(
+        (total_late / total_orders * 100), 2) if total_orders > 0 else 0
 
-    # Years as customer from first_order_date
-    partner = sb.table("partners").select("first_order_date").eq("id", partner_id).execute()
-    first_date = partner.data[0].get("first_order_date") if partner.data else None
+    partner = sb.table("partners").select("first_order_date").eq(
+        "id", partner_id).execute()
+    first_date = partner.data[0].get(
+        "first_order_date") if partner.data else None
     years = 0.0
     if first_date:
-        delta = datetime.now(timezone.utc).date() - datetime.fromisoformat(str(first_date)).date()
+        delta = (datetime.now(timezone.utc).date() -
+                 datetime.fromisoformat(str(first_date)).date())
         years = round(delta.days / 365.25, 2)
 
     avg_annual = round(total_revenue / years, 2) if years > 0 else total_revenue
@@ -269,79 +303,62 @@ def refresh_order_summary(sb, partner_id):
     }, on_conflict="partner_id").execute()
 
 
-# ── First order date lookup ───────────────────────────────────────────────────
+# ── First order date ──────────────────────────────────────────────────────────
 def get_first_order_date(token, retailer_id):
-    """
-    Pull the earliest order for this retailer to determine first order date.
-    """
-    url = (
-        f"https://app.ordermentum.com/v2/orders"
-        f"?supplierId={SUPPLIER_ID}"
-        f"&retailerId={retailer_id}"
-        f"&pageSize=1&pageNo=1"
-        f"&sort=createdAt&order=asc"
-    )
+    url = f"https://api.ordermentum.com/v1/purchasers/{retailer_id}"
     data = om_get(url, token)
-    orders = data.get("data", [])
-    if orders:
-        created = orders[0].get("createdAt", "")
-        try:
-            return datetime.fromisoformat(created.replace("Z", "+00:00")).date()
-        except Exception:
-            return None
+    if data:
+        activated = data.get("activatedAt") or data.get("firstOrderedAt")
+        if activated:
+            try:
+                return datetime.fromisoformat(
+                    activated.replace("Z", "+00:00")).date()
+            except Exception:
+                pass
     return None
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     print("=" * 60)
-    print(f"OQ Wholesale Sync — {datetime.now(AEST).strftime('%A %d %B %Y %I:%M %p AEST')}")
+    print(f"OQ Wholesale Sync — "
+          f"{datetime.now(AEST).strftime('%A %d %B %Y %I:%M %p AEST')}")
     print("=" * 60)
 
-    # Authenticate
     print("\n[1/5] Authenticating with Ordermentum...")
     token = om_auth()
     print("  Authenticated ✓")
 
-    # Get week range
     start_utc, end_utc, week_start_date = ordering_week_range()
-    print(f"\n[2/5] Pulling orders for week: {week_start_date} -> {week_start_date + timedelta(days=6)}")
+    print(f"\n[2/5] Pulling orders for week: "
+          f"{week_start_date} -> {week_start_date + timedelta(days=6)}")
     print(f"  UTC window: {start_utc} -> {end_utc}")
 
-    # Pull orders
     all_orders = pull_orders(token, start_utc, end_utc)
     print(f"  {len(all_orders)} orders pulled ✓")
 
-    # Process line items
-    print(f"\n[3/5] Processing line items...")
+    print(f"\n[3/5] Processing (tracked partners + OQ-COF-WHS SKUs only)...")
     partner_data = process_orders(all_orders, token)
-    print(f"  {len(partner_data)} partners found ✓")
+    print(f"  {len(partner_data)} partners with WHS coffee orders ✓")
 
-    # Connect to Supabase
     print(f"\n[4/5] Writing to Supabase...")
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     for retailer_id, data in partner_data.items():
-        print(f"  → {data['name']}: {data['kg']:.1f}kg, {data['order_count']} orders, {data['late_count']} late")
-
-        # Get first order date (for new partners)
+        print(f"  → {data['name']}: {data['kg']:.1f}kg, "
+              f"{data['order_count']} orders, {data['late_count']} late")
         first_date = get_first_order_date(token, retailer_id)
         time.sleep(0.1)
-
-        # Upsert partner
-        partner_id = upsert_partner(sb, retailer_id, data["name"], first_date)
-
-        # Write this week's row
+        partner_id = upsert_partner(
+            sb, retailer_id, data["name"], first_date)
         upsert_weekly_order(
             sb, partner_id, week_start_date,
             data["kg"], data["order_count"], data["late_count"], data["revenue"]
         )
-
-        # Refresh summary stats
         refresh_order_summary(sb, partner_id)
 
     print(f"\n[5/5] Done ✓")
-    print(f"  {len(partner_data)} partners synced to Supabase")
+    print(f"  {len(partner_data)} partners synced")
     print(f"  Week: {week_start_date}")
     print("=" * 60)
 
