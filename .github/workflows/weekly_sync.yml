@@ -1,0 +1,32 @@
+name: OQ Wholesale Weekly Sync
+
+on:
+  schedule:
+    # Thursday 6:30am AEST = Wednesday 20:30 UTC
+    - cron: '30 20 * * 3'
+  workflow_dispatch:
+    # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install supabase requests
+
+      - name: Run wholesale sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OM_USERNAME: ${{ secrets.OM_USERNAME }}
+          OM_PASSWORD: ${{ secrets.OM_PASSWORD }}
+        run: python scripts/wholesale_sync.py
