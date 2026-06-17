@@ -1,0 +1,30 @@
+name: OQ Roast Plan Weekly Sync
+
+on:
+  schedule:
+    # Tuesday 6:30am AEST = Monday 20:30 UTC
+    - cron: '30 20 * * 1'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install supabase requests
+
+      - name: Run roast sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OM_USERNAME: ${{ secrets.OM_USERNAME }}
+          OM_PASSWORD: ${{ secrets.OM_PASSWORD }}
+        run: python scripts/roast_sync.py
