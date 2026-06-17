@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OQ Roast Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --indigo:#0f135a;--indigo-tint:#19226d;--indigo-light:#3a3f7d;
+  --arctic:#46c4dc;--apple:#61bb4b;--coral:#f0534b;--tawny:#e0c23a;
+  --fire:#f4932b;--grape:#824e9f;
+  --white:#fff;--surface:#f4f5fb;--muted:#8b8fa8;--border:rgba(15,19,90,.1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Clash Grotesk',system-ui,sans-serif;background:var(--surface);color:var(--indigo);min-height:100vh}
+
+/* HEADER */
+header{background:var(--indigo);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic)}
+.logo{font-size:.7rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:#fff}
+.logo span{color:var(--arctic)}
+.header-right{display:flex;align-items:center;gap:1.5rem}
+#last-updated{font-size:.72rem;color:var(--arctic);font-family:'DM Mono',monospace;opacity:.8}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--apple);box-shadow:0 0 6px var(--apple)}
+
+/* LOADING */
+#loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 64px);gap:1rem}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--arctic);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{font-size:.85rem;color:var(--muted)}
+
+/* LAYOUT */
+main{max-width:1200px;margin:0 auto;padding:2rem;display:none}
+
+/* WEEK SELECTOR */
+.week-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.week-label{font-size:.72rem;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.week-selector{display:flex;gap:.5rem;flex-wrap:wrap}
+.week-btn{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:.4rem .75rem;font-size:.8rem;font-weight:500;color:var(--indigo);cursor:pointer;transition:all .15s;font-family:inherit}
+.week-btn:hover{border-color:var(--arctic);color:var(--arctic)}
+.week-btn.active{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+
+/* SECTION */
+.section-hd{display:flex;align-items:baseline;gap:.75rem;margin-bottom:1rem;margin-top:1.5rem}
+.section-title{font-size:.72rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--indigo)}
+.section-line{flex:1;height:1px;background:var(--border)}
+
+/* SCORECARD */
+.scorecard{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem}
+.card{background:#fff;border-radius:12px;padding:1.25rem 1.5rem;border:1.5px solid var(--border);position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.card-label{font-size:.68rem;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+.card-value{font-size:2rem;font-weight:700;color:var(--indigo);line-height:1}
+.card-sub{font-size:.75rem;color:var(--muted);margin-top:.35rem;font-family:'DM Mono',monospace}
+
+/* BLEND CARDS */
+.blend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:2rem}
+.blend-card{background:#fff;border-radius:12px;border:1.5px solid var(--border);padding:1.25rem 1.5rem;position:relative;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.blend-card:hover{border-color:var(--arctic)}
+.blend-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px}
+.blend-name{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+.blend-kg{font-size:2.25rem;font-weight:700;line-height:1}
+.blend-meta{display:flex;align-items:center;gap:.75rem;margin-top:.5rem}
+.blend-wow{font-size:.75rem;font-family:'DM Mono',monospace}
+.blend-avg{font-size:.72rem;color:var(--muted);font-family:'DM Mono',monospace}
+.trend-up{color:var(--apple)}
+.trend-down{color:var(--coral)}
+.trend-flat{color:var(--muted)}
+
+/* TREND CHART */
+.chart-card{background:#fff;border-radius:12px;border:1.5px solid var(--border);padding:1.5rem;margin-bottom:2rem}
+.chart-title{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1.25rem}
+.chart-wrap{position:relative;height:220px}
+.chart-legend{display:flex;flex-wrap:wrap;gap:1rem;margin-top:1rem}
+.legend-item{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--muted)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* HISTORY TABLE */
+.table-wrap{background:#fff;border-radius:12px;border:1.5px solid var(--border);overflow:hidden;margin-bottom:2rem}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead tr{background:var(--indigo)}
+thead th{padding:.75rem 1rem;text-align:left;font-size:.62rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);white-space:nowrap;cursor:pointer}
+thead th:hover{color:var(--arctic)}
+thead th.sorted{color:var(--arctic)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface)}
+tbody td{padding:.7rem 1rem;font-family:'DM Mono',monospace;font-size:.78rem}
+tbody td.name-col{font-family:'Clash Grotesk',sans-serif;font-weight:600;font-size:.82rem}
+.wow-up{color:var(--apple)}.wow-down{color:var(--coral)}.wow-flat{color:var(--muted)}
+.total-row{background:rgba(15,19,90,.04)!important;font-weight:600}
+.total-row td{font-weight:700}
+
+footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter-spacing:.05em}
+
+@media(max-width:900px){.scorecard{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.scorecard{grid-template-columns:1fr};main{padding:1rem}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">OLD QTR <span>/</span> Roast Plan</div>
+  <div class="header-right">
+    <span id="last-updated">Loading...</span>
+    <div class="dot"></div>
+  </div>
+</header>
+
+<div id="loading"><div class="spinner"></div><p>Pulling roast data...</p></div>
+
+<main id="main">
+
+  <div class="week-bar">
+    <span class="week-label">Week of</span>
+    <div class="week-selector" id="week-selector"></div>
+  </div>
+
+  <!-- SCORECARD -->
+  <div class="scorecard">
+    <div class="card" style="--c:var(--arctic)">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--arctic)"></div>
+      <div class="card-label">Total WHS Coffee</div>
+      <div class="card-value" id="total-whs">—</div>
+      <div class="card-sub" id="total-whs-sub"></div>
+    </div>
+    <div class="card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--fire)"></div>
+      <div class="card-label">Contract Roasting</div>
+      <div class="card-value" id="total-contract">—</div>
+      <div class="card-sub" id="total-contract-sub"></div>
+    </div>
+    <div class="card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--grape)"></div>
+      <div class="card-label">Venue Brewing</div>
+      <div class="card-value" id="total-venue">—</div>
+      <div class="card-sub" id="total-venue-sub"></div>
+    </div>
+    <div class="card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--tawny)"></div>
+      <div class="card-label">Total Roast Required</div>
+      <div class="card-value" id="total-all">—</div>
+      <div class="card-sub" id="total-all-sub"></div>
+    </div>
+  </div>
+
+  <!-- BLEND BREAKDOWN -->
+  <div class="section-hd"><span class="section-title">Wholesale Blends</span><div class="section-line"></div></div>
+  <div class="blend-grid" id="blend-grid"></div>
+
+  <div class="section-hd"><span class="section-title">Contract & Venue</span><div class="section-line"></div></div>
+  <div class="blend-grid" id="other-grid"></div>
+
+  <!-- TREND CHART -->
+  <div class="section-hd"><span class="section-title">12-Week Trend</span><div class="section-line"></div></div>
+  <div class="chart-card">
+    <div class="chart-title">Weekly KG by Category</div>
+    <div class="chart-wrap"><svg id="trend-svg" width="100%" height="100%"></svg></div>
+    <div class="chart-legend" id="chart-legend"></div>
+  </div>
+
+  <!-- HISTORY TABLE -->
+  <div class="section-hd"><span class="section-title">Historical Data</span><div class="section-line"></div></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Week</th>
+        <th>Village</th><th>Cloud 9</th><th>Euphoria</th>
+        <th>Decaf</th><th>K'Ho</th>
+        <th>Rising Sun</th>
+        <th>Venue Milk</th><th>Venue Black</th>
+        <th>Total</th><th>WoW</th>
+      </tr></thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </div>
+
+</main>
+
+<footer>OQ Roast Plan Analytics · Data from Ordermentum · Updates every Tuesday</footer>
+
+<script>
+const SUPABASE_URL = 'https://poswbggoxhnayvvubpao.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvc3diZ2dveGhuYXl2dnVicGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjkxMTAsImV4cCI6MjA5NzA0NTExMH0.rT93P50Q8MyBT_6EvkLCW4XRL_vN8WzYmz3i6HZ_Z-0';
+
+const BLENDS = [
+  {field:'village_blend_kg', label:'Village Blend', color:'#46c4dc'},
+  {field:'cloud_nine_kg',    label:'Cloud Nine',   color:'#61bb4b'},
+  {field:'euphoria_kg',      label:'Euphoria',     color:'#f4932b'},
+  {field:'decaf_kg',         label:'Decaf',        color:'#e0c23a'},
+  {field:'vietnam_kho_kg',   label:"Vietnam K'Ho", color:'#824e9f'},
+];
+const OTHER = [
+  {field:'rising_sun_kg',  label:'Rising Sun Roasters', color:'#f4932b', note:'Contract roasting'},
+  {field:'venue_milk_kg',  label:'Venue — Milk Espresso', color:'#824e9f', note:'OQ venues'},
+  {field:'venue_black_kg', label:'Venue — Black Espresso', color:'#3a3f7d', note:'OQ venues'},
+];
+
+let allData = [];
+let weeks = [];
+let currentWeek = null;
+
+const fmtKg = n => (+n||0).toFixed(1)+'kg';
+const fmtKgShort = n => (+n||0).toFixed(0)+'kg';
+
+function weekLabel(d) {
+  return new Date(d+'T00:00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+}
+
+function getRow(week) { return allData.find(r => r.week_start === week) || {}; }
+function getPrevRow(week) {
+  const idx = weeks.indexOf(week);
+  return idx < weeks.length - 1 ? allData.find(r => r.week_start === weeks[idx+1]) || {} : {};
+}
+
+function wow(current, prev, field) {
+  const c = +(current[field]||0), p = +(prev[field]||0);
+  if (!p) return null;
+  return (c - p) / p * 100;
+}
+
+function trendHtml(pct) {
+  if (pct === null) return '<span class="wow-flat">—</span>';
+  const cls = pct > 5 ? 'wow-up' : pct < -5 ? 'wow-down' : 'wow-flat';
+  const arrow = pct > 5 ? '↑' : pct < -5 ? '↓' : '→';
+  return `<span class="${cls}">${arrow} ${Math.abs(pct).toFixed(0)}%</span>`;
+}
+
+function rolling(field, beforeWeek, n=4) {
+  const idx = weeks.indexOf(beforeWeek);
+  const slice = weeks.slice(idx+1, idx+1+n).map(w => +(getRow(w)[field]||0));
+  if (!slice.length) return null;
+  return slice.reduce((a,b) => a+b, 0) / slice.length;
+}
+
+function renderWeekSelector() {
+  document.getElementById('week-selector').innerHTML = weeks.slice(0,8).map(w =>
+    `<button class="week-btn${w===currentWeek?' active':''}" onclick="selectWeek('${w}')">${weekLabel(w)}</button>`
+  ).join('');
+}
+
+function renderScorecard(row, prev) {
+  const whs = BLENDS.reduce((s,b) => s + +(row[b.field]||0), 0);
+  const prevWhs = BLENDS.reduce((s,b) => s + +(prev[b.field]||0), 0);
+  const contract = +(row.rising_sun_kg||0);
+  const prevContract = +(prev.rising_sun_kg||0);
+  const venue = +(row.venue_milk_kg||0) + +(row.venue_black_kg||0);
+  const prevVenue = +(prev.venue_milk_kg||0) + +(prev.venue_black_kg||0);
+  const total = whs + contract + venue;
+  const prevTotal = prevWhs + prevContract + prevVenue;
+
+  const sub = (cur, prv) => {
+    if (!prv) return '';
+    const p = (cur-prv)/prv*100;
+    const cls = p > 5 ? 'trend-up' : p < -5 ? 'trend-down' : 'trend-flat';
+    return `<span class="${cls}">${p > 5?'↑':p<-5?'↓':'→'} ${Math.abs(p).toFixed(0)}% vs prev week</span>`;
+  };
+
+  document.getElementById('total-whs').textContent = fmtKg(whs);
+  document.getElementById('total-whs-sub').innerHTML = sub(whs, prevWhs);
+  document.getElementById('total-contract').textContent = fmtKg(contract);
+  document.getElementById('total-contract-sub').innerHTML = sub(contract, prevContract);
+  document.getElementById('total-venue').textContent = fmtKg(venue);
+  document.getElementById('total-venue-sub').innerHTML = sub(venue, prevVenue);
+  document.getElementById('total-all').textContent = fmtKg(total);
+  document.getElementById('total-all-sub').innerHTML = sub(total, prevTotal);
+}
+
+function renderBlendCards(row, prev, blends, containerId) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = blends.map(b => {
+    const kg = +(row[b.field]||0);
+    const prevKg = +(prev[b.field]||0);
+    const pct = prevKg ? (kg-prevKg)/prevKg*100 : null;
+    const avg = rolling(b.field, currentWeek);
+    const cls = pct !== null ? (pct > 5 ? 'trend-up' : pct < -5 ? 'trend-down' : 'trend-flat') : 'trend-flat';
+    const arrow = pct !== null ? (pct > 5 ? '↑' : pct < -5 ? '↓' : '→') : '';
+    return `<div class="blend-card" style="border-top:4px solid ${b.color}">
+      <div class="blend-name">${b.label}${b.note ? `<span style="font-weight:400;margin-left:.5rem;opacity:.6">${b.note}</span>` : ''}</div>
+      <div class="blend-kg" style="color:${b.color}">${fmtKg(kg)}</div>
+      <div class="blend-meta">
+        ${pct !== null ? `<span class="blend-wow ${cls}">${arrow} ${Math.abs(pct).toFixed(0)}% WoW</span>` : '<span class="blend-avg">—</span>'}
+        ${avg !== null ? `<span class="blend-avg">4wk avg ${fmtKg(avg)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function drawTrend() {
+  const last12 = weeks.slice(0,12).reverse();
+  const svgEl = document.getElementById('trend-svg');
+  const w = svgEl.clientWidth || 800;
+  const h = 220;
+  const pad = {t:10,r:10,b:30,l:45};
+
+  const series = [
+    {label:'Total WHS', color:'#46c4dc', fields:BLENDS.map(b=>b.field)},
+    {label:'Rising Sun', color:'#f4932b', fields:['rising_sun_kg']},
+    {label:'Venue', color:'#824e9f', fields:['venue_milk_kg','venue_black_kg']},
+  ];
+
+  const allVals = last12.flatMap(w => series.map(s => s.fields.reduce((sum,f) => sum + +(getRow(w)[f]||0), 0)));
+  const maxV = Math.max(...allVals, 1);
+
+  const xp = i => pad.l + (i/(last12.length-1||1))*(w-pad.l-pad.r);
+  const yp = v => pad.t + (1-v/maxV)*(h-pad.t-pad.b);
+
+  let svg = '';
+  // Grid
+  [0,0.25,0.5,0.75,1].forEach(f => {
+    const val = maxV*f, yv = yp(val);
+    svg += `<line x1="${pad.l}" y1="${yv}" x2="${w-pad.r}" y2="${yv}" stroke="#0f135a" stroke-opacity=".06" stroke-width="1"/>`;
+    svg += `<text x="${pad.l-4}" y="${yv+4}" text-anchor="end" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${val.toFixed(0)}</text>`;
+  });
+  // X labels
+  last12.forEach((wk,i) => {
+    if (i % 3 === 0 || i === last12.length-1) {
+      svg += `<text x="${xp(i)}" y="${h-pad.b+14}" text-anchor="middle" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${weekLabel(wk).split(' ')[0]}</text>`;
+    }
+  });
+  // Lines
+  series.forEach(s => {
+    const pts = last12.map((wk,i) => {
+      const v = s.fields.reduce((sum,f) => sum + +(getRow(wk)[f]||0), 0);
+      return `${xp(i)},${yp(v)}`;
+    });
+    svg += `<polyline points="${pts.join(' ')}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    last12.forEach((wk,i) => {
+      const v = s.fields.reduce((sum,f) => sum + +(getRow(wk)[f]||0), 0);
+      svg += `<circle cx="${xp(i)}" cy="${yp(v)}" r="3" fill="${s.color}"/>`;
+    });
+  });
+
+  svgEl.innerHTML = svg;
+
+  document.getElementById('chart-legend').innerHTML = series.map(s =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${s.color}"></div>${s.label}</div>`
+  ).join('');
+}
+
+function renderHistory() {
+  const all = BLENDS.map(b=>b.field).concat(['rising_sun_kg','venue_milk_kg','venue_black_kg']);
+  const rows = weeks.slice(0, 52).map((wk, idx) => {
+    const row = getRow(wk);
+    const prev = idx < weeks.length-1 ? getRow(weeks[idx+1]) : {};
+    const total = all.reduce((s,f) => s + +(row[f]||0), 0);
+    const prevTotal = all.reduce((s,f) => s + +(prev[f]||0), 0);
+    const pct = prevTotal ? (total-prevTotal)/prevTotal*100 : null;
+    const cls = pct !== null ? (pct>5?'wow-up':pct<-5?'wow-down':'wow-flat') : 'wow-flat';
+    const arrow = pct !== null ? (pct>5?'↑':pct<-5?'↓':'→') : '';
+    return `<tr class="${wk===currentWeek?'total-row':''}">
+      <td class="name-col" style="font-family:'Clash Grotesk',sans-serif">${weekLabel(wk)}</td>
+      ${BLENDS.map(b => `<td>${fmtKgShort(row[b.field]||0)}</td>`).join('')}
+      <td>${fmtKgShort(row.rising_sun_kg||0)}</td>
+      <td>${fmtKgShort(row.venue_milk_kg||0)}</td>
+      <td>${fmtKgShort(row.venue_black_kg||0)}</td>
+      <td style="font-weight:600">${fmtKgShort(total)}</td>
+      <td class="${cls}">${pct!==null?`${arrow} ${Math.abs(pct).toFixed(0)}%`:'—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('history-body').innerHTML = rows;
+}
+
+function renderAll() {
+  const row = getRow(currentWeek);
+  const prev = getPrevRow(currentWeek);
+  renderScorecard(row, prev);
+  renderBlendCards(row, prev, BLENDS, 'blend-grid');
+  renderBlendCards(row, prev, OTHER, 'other-grid');
+  drawTrend();
+  renderHistory();
+}
+
+function selectWeek(w) {
+  currentWeek = w;
+  renderWeekSelector();
+  renderAll();
+}
+
+async function init() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/roast_weekly?select=*&order=week_start.desc&limit=200`,
+      { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
+    );
+    allData = await res.json();
+    weeks = allData.map(r => r.week_start).sort((a,b) => b.localeCompare(a));
+    currentWeek = weeks[0];
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+    document.getElementById('last-updated').textContent =
+      'Updated ' + new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+
+    renderWeekSelector();
+    renderAll();
+  } catch(e) {
+    document.getElementById('loading').innerHTML =
+      `<p style="color:var(--coral)">Failed to load. ${e.message}</p>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
