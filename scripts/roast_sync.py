@@ -1,11 +1,6 @@
 """
 OQ Roast Plan Weekly Sync
 Runs every Tuesday 6:30am AEST via GitHub Actions.
-Pulls the previous ordering week's blend data from Ordermentum
-and writes to Supabase roast_weekly table.
-
-Ordering week: Tuesday 00:00 AEST -> Monday 23:59 AEST
-Script runs Tuesday morning — captures the week just closed.
 """
 
 import os, re, json, time, urllib.request
@@ -41,13 +36,30 @@ def om_get(url, token):
 
 def ordering_week_range():
     """
-    Returns the most recently completed ordering week.
-    Script runs Tuesday morning — last week = Tue 7 days ago -> Mon yesterday.
+    Returns the most recently COMPLETED ordering week (Tue -> Mon).
+    Works correctly regardless of what day the script is triggered.
+
+    Logic:
+      1. Find most recent Tuesday = start of the CURRENT open week
+         (if today IS Tuesday, days_since_tuesday = 0, so current week = today)
+      2. Subtract 7 days = start of the last COMPLETED week
+
+    Example running on Monday 22 June 2026:
+      - Most recent Tuesday = 17 June (current open week)
+      - Last completed week = Tue 10 June -> Mon 16 June  ✓
+
+    Example running on Tuesday 17 June 2026 (scheduled run):
+      - Most recent Tuesday = 17 June (today = current week just opened)
+      - Last completed week = Tue 10 June -> Mon 16 June  ✓
     """
     now_aest = datetime.now(AEST)
-    # Last Tuesday = 7 days ago (since we're running on Tuesday)
-    last_tuesday = now_aest - timedelta(days=7)
-    week_start = last_tuesday.replace(hour=0, minute=0, second=0, microsecond=0)
+    # weekday(): Mon=0, Tue=1 ... Sun=6
+    days_since_tuesday = (now_aest.weekday() - 1) % 7
+    # Start of current open week (most recent Tuesday at midnight)
+    current_week_start = (now_aest - timedelta(days=days_since_tuesday)).replace(
+        hour=0, minute=0, second=0, microsecond=0)
+    # Last completed week starts one full week before that
+    week_start = current_week_start - timedelta(days=7)
     week_end = (week_start + timedelta(days=6)).replace(hour=23, minute=59, second=59)
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     return (
@@ -64,9 +76,8 @@ def classify(name, sku):
     if "oq cafe coffee" in n or "oq-cof-cafe" in s or "oq-cof-ven" in s:
         if "milk" in n:  return "venue_milk_kg"
         if "black" in n: return "venue_black_kg"
-        return None  # batch brew or other venue — ignore
-    if "rising sun" in n or "rsr" in s:
-        return "rising_sun_kg"
+        return None
+    if "rising sun" in n or "rsr" in s: return "rising_sun_kg"
     if "village" in n:    return "village_blend_kg"
     if "cloud nine" in n or "c9" in s: return "cloud_nine_kg"
     if "euphoria" in n:   return "euphoria_kg"
@@ -99,6 +110,7 @@ def main():
 
     start_utc, end_utc, week_start_date = ordering_week_range()
     print(f"\n[2/4] Pulling orders: {week_start_date} → {week_start_date + timedelta(days=6)}")
+    print(f"  (UTC: {start_utc} → {end_utc})")
 
     all_orders = []
     page = 1
