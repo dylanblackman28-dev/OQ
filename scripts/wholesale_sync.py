@@ -365,6 +365,13 @@ def main():
         )
         refresh_order_summary(sb, partner_id)
 
+    # Write sync timestamp so dashboard can show "last updated by workflow"
+    sb.table("sync_log").upsert({
+        "id": "wholesale",
+        "last_synced_at": datetime.now(timezone.utc).isoformat(),
+        "synced_by": "github_actions",
+    }, on_conflict="id").execute()
+
     print(f"\n[5/5] Done ✓")
     print(f"  {len(partner_data)} partners synced")
     print(f"  Week: {week_start_date}")
