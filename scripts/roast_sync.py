@@ -36,31 +36,30 @@ def om_get(url, token):
 
 def ordering_week_range():
     """
-    Returns the most recently COMPLETED ordering week (Tue -> Mon).
+    Returns the most recently COMPLETED ordering week.
+    Week runs: Tuesday 12:00 noon AEST -> following Tuesday 11:59 AM AEST.
     Works correctly regardless of what day the script is triggered.
 
-    Logic:
-      1. Find most recent Tuesday = start of the CURRENT open week
-         (if today IS Tuesday, days_since_tuesday = 0, so current week = today)
-      2. Subtract 7 days = start of the last COMPLETED week
+    Example running on Tuesday 30 June 2026:
+      - Most recent Tuesday noon = 30 June 12:00
+      - Last completed week = Tue 23 June 12:00 -> Tue 30 June 11:59  ✓
 
-    Example running on Monday 22 June 2026:
-      - Most recent Tuesday = 17 June (current open week)
-      - Last completed week = Tue 10 June -> Mon 16 June  ✓
-
-    Example running on Tuesday 17 June 2026 (scheduled run):
-      - Most recent Tuesday = 17 June (today = current week just opened)
-      - Last completed week = Tue 10 June -> Mon 16 June  ✓
+    Example running on Monday 29 June 2026:
+      - Most recent Tuesday noon = 23 June 12:00 (current open week)
+      - Last completed week = Tue 16 June 12:00 -> Tue 23 June 11:59  ✓
     """
     now_aest = datetime.now(AEST)
-    # weekday(): Mon=0, Tue=1 ... Sun=6
+    # Find the most recent Tuesday noon
     days_since_tuesday = (now_aest.weekday() - 1) % 7
-    # Start of current open week (most recent Tuesday at midnight)
-    current_week_start = (now_aest - timedelta(days=days_since_tuesday)).replace(
-        hour=0, minute=0, second=0, microsecond=0)
-    # Last completed week starts one full week before that
-    week_start = current_week_start - timedelta(days=7)
-    week_end = (week_start + timedelta(days=6)).replace(hour=23, minute=59, second=59)
+    this_tuesday_noon = (now_aest - timedelta(days=days_since_tuesday)).replace(
+        hour=12, minute=0, second=0, microsecond=0)
+    # If we haven't reached Tuesday noon yet today, go back one more week
+    if now_aest < this_tuesday_noon:
+        this_tuesday_noon -= timedelta(days=7)
+    # Last completed week
+    week_start = this_tuesday_noon - timedelta(days=7)  # Tue noon, 1 week ago
+    week_end = this_tuesday_noon.replace(
+        hour=11, minute=59, second=59)  # This Tuesday 11:59 AM
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     return (
         week_start.astimezone(timezone.utc).strftime(fmt),
