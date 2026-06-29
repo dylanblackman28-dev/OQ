@@ -115,29 +115,37 @@ def extract_kg(name, qty):
 # ── Date range helpers ────────────────────────────────────────────────────────
 def ordering_week_range():
     """
-    Most recently completed ordering week: Tuesday 00:00 -> Monday 23:59 AEST.
-    Script runs Thursday so last week = Tue 8 days ago -> Mon 1 day ago.
+    Most recently completed ordering week.
+    Week runs: Tuesday 12:00 noon AEST -> following Tuesday 11:59 AM AEST.
+    Late orders: Tuesday 00:00 -> Tuesday 11:59 AM (before noon cutover).
+    Script runs Thursday — last completed week closed Tuesday 11:59 AM this week.
+
+    week_start returned is the DATE of the Tuesday, used as the DB key.
     """
     now_aest = datetime.now(AEST)
-    days_since_monday = (now_aest.weekday() - 0) % 7
-    last_monday = now_aest - timedelta(days=days_since_monday)
-    week_end = last_monday.replace(hour=23, minute=59, second=59, microsecond=0)
-    week_start = (last_monday - timedelta(days=6)).replace(
-        hour=0, minute=0, second=0, microsecond=0)
+    # Find the most recent Tuesday
+    days_since_tuesday = (now_aest.weekday() - 1) % 7
+    this_tuesday = (now_aest - timedelta(days=days_since_tuesday)).replace(
+        hour=12, minute=0, second=0, microsecond=0)
+    # Last completed week: the Tuesday before that
+    last_tuesday = this_tuesday - timedelta(days=7)
+    week_start_dt = last_tuesday  # Tue 12:00 noon AEST
+    week_end_dt = (last_tuesday + timedelta(days=7)).replace(
+        hour=11, minute=59, second=59, microsecond=0)  # Following Tue 11:59 AM
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     return (
-        week_start.astimezone(timezone.utc).strftime(fmt),
-        week_end.astimezone(timezone.utc).strftime(fmt),
-        week_start.date(),
+        week_start_dt.astimezone(timezone.utc).strftime(fmt),
+        week_end_dt.astimezone(timezone.utc).strftime(fmt),
+        week_start_dt.date(),  # DATE of the Tuesday = DB key
     )
 
 
 def is_in_late_window(created_at_str):
-    """Tuesday 00:01 -> Wednesday 23:59 AEST = late window."""
+    """Late = Tuesday 00:00 -> Tuesday 11:59 AM AEST (before the noon week cutover)."""
     try:
         dt = datetime.fromisoformat(
             created_at_str.replace("Z", "+00:00")).astimezone(AEST)
-        return dt.weekday() in (1, 2)
+        return dt.weekday() == 1 and dt.hour < 12  # Tuesday before noon
     except Exception:
         return False
 
