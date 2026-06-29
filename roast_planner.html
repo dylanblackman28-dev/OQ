@@ -252,17 +252,19 @@ footer{text-align:center;padding:2rem;font-size:.67rem;color:var(--muted);letter
   <div class="planner-grid" id="planner-grid"></div>
 
   <!-- VENUE MILK — separate, no par -->
-  <div class="venue-row" id="venue-milk-row">
-    <div class="venue-row-bar"></div>
-    <div class="venue-left">
-      <div class="venue-name">Venue — Milk Espresso</div>
-      <div class="venue-code">OQ VENUES</div>
-      <div class="venue-note">Roasted to order each week — no par level held. Select which blend venues are on.</div>
+  <div class="blend-row" id="venue-milk-row" style="grid-template-columns:170px 1fr auto;border-left:none">
+    <div class="blend-bar" style="background:#824e9f"></div>
+    <div class="blend-identity">
+      <div class="blend-name">Venue — Milk Espresso</div>
+      <div class="blend-code">OQ VENUES</div>
     </div>
-    <div class="venue-select-wrap">
-      <div class="venue-select-label">Brewing this week</div>
+    <div style="font-size:.72rem;color:var(--muted);font-style:italic;align-self:center">
+      Roasted to order — no par held
+    </div>
+    <div class="input-group" style="min-width:200px">
+      <div class="input-label">Brewing this week</div>
       <select class="venue-select" id="venue-blend">
-        <option value="">— select —</option>
+        <option value="">— select blend —</option>
         <option value="Village Blend">Village Blend</option>
         <option value="Cloud Nine">Cloud Nine</option>
         <option value="Euphoria">Euphoria</option>
@@ -273,26 +275,16 @@ footer{text-align:center;padding:2rem;font-size:.67rem;color:var(--muted);letter
   </div>
 
   <!-- TOTALS -->
-  <div class="totals-bar">
+  <div class="totals-bar" style="grid-template-columns:repeat(2,1fr)">
     <div class="total-card">
       <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--arctic)"></div>
-      <div class="tc-label">Total Ordered</div>
+      <div class="tc-label">Total Ordered (ref)</div>
       <div class="tc-value" id="total-ordered">—</div>
     </div>
     <div class="total-card">
       <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--tawny)"></div>
       <div class="tc-label">Total Stock on Hand</div>
       <div class="tc-value" id="total-stock">—</div>
-    </div>
-    <div class="total-card">
-      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--muted)"></div>
-      <div class="tc-label">Total Par</div>
-      <div class="tc-value" id="total-par">—</div>
-    </div>
-    <div class="total-card">
-      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--indigo)"></div>
-      <div class="tc-label">Total to Roast</div>
-      <div class="tc-value" id="total-roast">—</div>
     </div>
   </div>
 
@@ -301,14 +293,7 @@ footer{text-align:center;padding:2rem;font-size:.67rem;color:var(--muted);letter
     <div>
       <div class="notes-label">Session notes</div>
       <textarea class="notes-input" id="session-notes" placeholder="Blend adjustments, stock issues, substitutions, anything unusual this week..."></textarea>
-      <div class="roaster-row">
-        <select class="roaster-select" id="roaster-name">
-          <option value="">— Who's on the roast? —</option>
-          <option value="Nathan">Nathan</option>
-          <option value="Sanne">Sanne</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
+
       <div class="save-msg" id="save-msg"></div>
     </div>
     <div>
@@ -355,11 +340,11 @@ const ANON_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Blend definitions — key matches roast_weekly field prefix (without _kg)
 const BLENDS = [
-  { key:'village_blend', code:'VB',  label:'Village Blend',  color:'#46c4dc', defaultPar:280 },
-  { key:'cloud_nine',    code:'C9',  label:'Cloud Nine',     color:'#61bb4b', defaultPar:160 },
-  { key:'euphoria',      code:'EU',  label:'Euphoria',       color:'#f4932b', defaultPar:60  },
-  { key:'decaf',         code:'DC',  label:'Decaf',          color:'#e0c23a', defaultPar:25  },
-  { key:'vietnam_kho',   code:'KHO', label:"Vietnam K'Ho",   color:'#824e9f', defaultPar:35  },
+  { key:'village_blend', code:'VB',  label:'Village Blend',  color:'#46c4dc' },
+  { key:'cloud_nine',    code:'C9',  label:'Cloud Nine',     color:'#61bb4b' },
+  { key:'euphoria',      code:'EU',  label:'Euphoria',       color:'#f4932b' },
+  { key:'decaf',         code:'DC',  label:'Decaf',          color:'#e0c23a' },
+  { key:'vietnam_kho',   code:'KHO', label:"Vietnam K'Ho",   color:'#824e9f' },
 ];
 
 // SQL to create the roast_plan table (shown in setup banner if table is missing)
@@ -454,7 +439,7 @@ function renderPlannerRows() {
   document.getElementById('planner-grid').innerHTML = BLENDS.map(b => {
     const code    = b.code.toLowerCase();
     const ordered = parseFloat(orderedKg[b.key + '_kg'] || 0);
-    const par     = existingPlan ? (parseFloat(existingPlan[`${code}_par_kg`])  || b.defaultPar) : b.defaultPar;
+    const par     = existingPlan ? (parseFloat(existingPlan[`${code}_par_kg`])  || 0) : 0;
     const stock   = existingPlan ? (parseFloat(existingPlan[`${code}_stock_kg`]) || 0)            : 0;
     return `
     <div class="blend-row">
@@ -471,8 +456,8 @@ function renderPlannerRows() {
       <div class="input-group">
         <div class="input-label">Par Level</div>
         <input class="kg-input" type="number" id="par-${b.key}"
-          value="${par}" min="0" step="0.5"
-          oninput="recalc('${b.key}')" placeholder="${b.defaultPar}">
+          value="${par > 0 ? par : ''}" min="0" step="0.5"
+          oninput="recalc('${b.key}')" placeholder="e.g. 200">
       </div>
       <div class="input-group">
         <div class="input-label">Stock on Hand <span style="font-weight:400;font-size:.55rem;letter-spacing:0;text-transform:none;color:var(--muted)">(after orders out)</span></div>
@@ -524,8 +509,6 @@ function updateTotals() {
   });
   document.getElementById('total-ordered').textContent = fmtKg(totalOrdered);
   document.getElementById('total-stock').textContent   = fmtKg(totalStock);
-  document.getElementById('total-par').textContent     = fmtKg(totalPar);
-  document.getElementById('total-roast').textContent   = fmtKg(totalRoast);
 }
 
 function renderHistory() {
@@ -572,7 +555,7 @@ async function saveSession() {
     week_start:   currentWeekStart,
     venue_blend:  document.getElementById('venue-blend').value   || null,
     notes:        document.getElementById('session-notes').value || null,
-    submitted_by: document.getElementById('roaster-name').value  || null,
+    submitted_by: null,
     submitted_at: new Date().toISOString(),
   };
 
@@ -711,7 +694,6 @@ async function init() {
     if (plan) {
       if (plan.venue_blend)  document.getElementById('venue-blend').value    = plan.venue_blend;
       if (plan.notes)        document.getElementById('session-notes').value  = plan.notes;
-      if (plan.submitted_by) document.getElementById('roaster-name').value   = plan.submitted_by;
     }
 
     renderPlannerRows();
