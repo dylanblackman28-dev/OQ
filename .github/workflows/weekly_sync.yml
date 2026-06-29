@@ -2,15 +2,21 @@ name: OQ Wholesale Weekly Sync
 
 on:
   schedule:
-    # Thursday 6:30am AEST = Wednesday 20:30 UTC
-    - cron: '30 20 * * 3'
+    # Monday 6:30am AEST = Sunday 20:30 UTC
+    - cron: '30 20 * * 0'
+    # Tuesday 6:30am AEST = Monday 20:30 UTC
+    - cron: '30 20 * * 1'
+    # Tuesday 12:00 noon AEST = Tuesday 02:00 UTC
+    - cron: '0 2 * * 2'
+    # Wednesday 6:30am AEST = Tuesday 20:30 UTC
+    - cron: '30 20 * * 2'
+    # Friday 6:30am AEST = Thursday 20:30 UTC
+    - cron: '30 20 * * 4'
   workflow_dispatch:
-    # Allows manual trigger from GitHub Actions tab
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
