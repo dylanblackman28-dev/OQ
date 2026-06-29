@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OQ / Roast Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --indigo:#0f135a;--indigo-tint:#19226d;--indigo-light:#3a3f7d;
+  --arctic:#46c4dc;--apple:#61bb4b;--coral:#f0534b;--tawny:#e0c23a;
+  --fire:#f4932b;--grape:#824e9f;
+  --white:#fff;--surface:#f4f5fb;--muted:#8b8fa8;--border:rgba(15,19,90,.1);
+  --card:#fff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Clash Grotesk',system-ui,sans-serif;background:var(--surface);color:var(--indigo);min-height:100vh}
+
+/* HEADER */
+header{background:var(--indigo);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic)}
+.logo{font-size:.7rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:#fff}
+.logo span{color:var(--arctic)}
+.header-right{display:flex;align-items:center;gap:1.5rem}
+#last-updated{font-size:.72rem;color:var(--arctic);font-family:'DM Mono',monospace;opacity:.8}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--apple);box-shadow:0 0 6px var(--apple)}
+
+/* LOADING */
+#loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 64px);gap:1rem}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--arctic);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{font-size:.85rem;color:var(--muted)}
+
+/* LAYOUT */
+main{max-width:1100px;margin:0 auto;padding:2rem;display:none}
+
+/* WEEK HERO */
+.week-hero{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.week-hero-eyebrow{font-size:.68rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem}
+.week-hero-date{font-size:1.6rem;font-weight:700;color:var(--indigo);line-height:1.1}
+.week-status-badge{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .75rem;border-radius:20px;font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.badge-draft{background:rgba(224,194,58,.15);color:#a08a00;border:1px solid rgba(224,194,58,.4)}
+.badge-saved{background:rgba(97,187,75,.15);color:#3a7a28;border:1px solid rgba(97,187,75,.4)}
+
+/* SECTION HEADERS */
+.section-hd{display:flex;align-items:baseline;gap:.75rem;margin-bottom:1.25rem;margin-top:2rem}
+.section-title{font-size:.72rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--indigo)}
+.section-line{flex:1;height:1px;background:var(--border)}
+
+/* FORMULA EXPLAINER */
+.formula-bar{background:rgba(15,19,90,.04);border:1.5px solid var(--border);border-radius:8px;padding:.75rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.formula-bar span{font-size:.78rem;font-family:'DM Mono',monospace;color:var(--muted)}
+.formula-bar .f-var{color:var(--indigo);font-weight:500}
+.formula-bar .f-result{color:var(--arctic);font-weight:700}
+.formula-bar .f-note{margin-left:auto;font-size:.68rem;color:var(--muted)}
+
+/* VENUE MILK ROW */
+.venue-row{
+  background:var(--card);border:1.5px solid var(--border);border-radius:10px;
+  padding:1rem 1.25rem;margin-bottom:1.25rem;
+  display:grid;grid-template-columns:4px 1fr auto;align-items:center;gap:1rem;
+  position:relative;overflow:hidden;
+}
+.venue-row-bar{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--grape)}
+.venue-left{display:flex;flex-direction:column;gap:.15rem}
+.venue-name{font-size:.88rem;font-weight:700;color:var(--indigo)}
+.venue-code{font-size:.68rem;font-family:'DM Mono',monospace;color:var(--muted)}
+.venue-note{font-size:.72rem;color:var(--muted);font-style:italic;margin-top:.1rem}
+.venue-select-wrap{display:flex;flex-direction:column;gap:.3rem;min-width:180px}
+.venue-select-label{font-size:.62rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.venue-select{
+  font-family:inherit;font-size:.82rem;font-weight:600;color:var(--indigo);
+  background:var(--surface);border:1.5px solid var(--border);border-radius:6px;
+  padding:.4rem .65rem;cursor:pointer;outline:none;
+}
+.venue-select:focus{border-color:var(--arctic)}
+
+/* PLANNER GRID */
+.planner-grid{display:flex;flex-direction:column;gap:.65rem;margin-bottom:1.5rem}
+
+.blend-row{
+  background:var(--card);border:1.5px solid var(--border);border-radius:12px;
+  padding:1.15rem 1.5rem;
+  position:relative;overflow:hidden;
+  display:grid;
+  grid-template-columns: 170px 1fr 1fr 1fr 1fr;
+  align-items:center;gap:1rem;
+  transition:border-color .15s;
+}
+.blend-row:hover{border-color:rgba(70,196,220,.35)}
+.blend-bar{position:absolute;left:0;top:0;bottom:0;width:4px}
+
+.blend-identity{}
+.blend-name{font-size:.86rem;font-weight:700;color:var(--indigo);margin-bottom:.12rem}
+.blend-code{font-size:.67rem;font-family:'DM Mono',monospace;color:var(--muted);letter-spacing:.05em}
+
+/* INPUT GROUPS */
+.input-group{display:flex;flex-direction:column;gap:.28rem}
+.input-label{font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.kg-input{
+  font-family:'DM Mono',monospace;font-size:1.05rem;font-weight:500;color:var(--indigo);
+  background:var(--surface);border:1.5px solid var(--border);border-radius:7px;
+  padding:.42rem .6rem;width:100%;outline:none;transition:border-color .15s,background .15s;
+  -moz-appearance:textfield;
+}
+.kg-input::-webkit-outer-spin-button,.kg-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.kg-input:focus{border-color:var(--arctic);background:#fff}
+.kg-input.readonly{background:rgba(15,19,90,.03);border-color:rgba(15,19,90,.06);cursor:default;color:var(--indigo-light)}
+.kg-input.readonly:focus{border-color:rgba(15,19,90,.06);background:rgba(15,19,90,.03)}
+
+/* TO ROAST OUTPUT */
+.to-roast-group{display:flex;flex-direction:column;gap:.28rem}
+.to-roast-label{font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.to-roast-value{
+  font-family:'DM Mono',monospace;font-size:1.5rem;font-weight:700;
+  line-height:1;padding:.3rem 0;min-height:2.4rem;display:flex;align-items:center;
+}
+.to-roast-value.positive{color:var(--indigo)}
+.to-roast-value.surplus{color:var(--apple)}
+.to-roast-value.empty{color:var(--border)}
+
+/* TOTALS BAR */
+.totals-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem}
+.total-card{background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:1rem 1.25rem;position:relative;overflow:hidden}
+.tc-label{font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem}
+.tc-value{font-size:1.55rem;font-weight:700;color:var(--indigo);font-family:'DM Mono',monospace}
+
+/* SESSION FOOTER */
+.session-footer{display:grid;grid-template-columns:1fr auto;gap:1.25rem;align-items:flex-end;margin-bottom:2rem}
+.notes-label{font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
+.notes-input{
+  font-family:inherit;font-size:.82rem;color:var(--indigo);
+  background:#fff;border:1.5px solid var(--border);border-radius:8px;
+  padding:.6rem .85rem;resize:vertical;min-height:3rem;outline:none;width:100%;
+  transition:border-color .15s;
+}
+.notes-input:focus{border-color:var(--arctic)}
+.roaster-row{display:flex;gap:.75rem;align-items:center;margin-top:.65rem;flex-wrap:wrap}
+.roaster-select{
+  font-family:inherit;font-size:.82rem;color:var(--indigo);
+  background:#fff;border:1.5px solid var(--border);border-radius:8px;
+  padding:.45rem .75rem;outline:none;cursor:pointer;
+}
+.roaster-select:focus{border-color:var(--arctic)}
+.btn-save{
+  background:var(--indigo);color:#fff;border:none;border-radius:10px;
+  padding:1rem 2rem;font-family:inherit;font-size:.88rem;font-weight:700;
+  letter-spacing:.05em;cursor:pointer;transition:background .15s;white-space:nowrap;
+}
+.btn-save:hover{background:var(--indigo-tint)}
+.btn-save:disabled{background:var(--border);color:var(--muted);cursor:not-allowed}
+.btn-save.saving{background:var(--arctic);color:var(--indigo)}
+.save-msg{font-size:.75rem;font-family:'DM Mono',monospace;margin-top:.5rem;min-height:1.2em}
+.save-msg.ok{color:var(--apple)}.save-msg.err{color:var(--coral)}
+.btn-hint{font-size:.67rem;color:var(--muted);text-align:right;margin-top:.3rem;line-height:1.5}
+
+/* SETUP BANNER */
+.setup-banner{
+  background:rgba(240,83,75,.05);border:1.5px dashed var(--coral);border-radius:10px;
+  padding:1.25rem 1.5rem;margin-bottom:2rem;display:none;
+}
+.setup-banner .sb-title{font-size:.85rem;font-weight:700;color:var(--coral);margin-bottom:.4rem}
+.setup-banner .sb-body{font-size:.75rem;color:var(--muted);line-height:1.6}
+.setup-banner code{
+  display:block;font-family:'DM Mono',monospace;font-size:.72rem;background:rgba(15,19,90,.05);
+  border-radius:6px;padding:.75rem 1rem;margin-top:.75rem;white-space:pre;overflow-x:auto;
+  color:var(--indigo);
+}
+
+/* HISTORY TABLE */
+.table-wrap{background:var(--card);border-radius:12px;border:1.5px solid var(--border);overflow:hidden;margin-bottom:2rem}
+table{width:100%;border-collapse:collapse;font-size:.77rem}
+thead tr{background:var(--indigo)}
+thead th{padding:.65rem .85rem;text-align:left;font-size:.59rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);white-space:nowrap}
+thead th.right{text-align:right}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(15,19,90,.02)}
+tbody td{padding:.58rem .85rem;font-family:'DM Mono',monospace;font-size:.74rem}
+tbody td.name-col{font-family:'Clash Grotesk',sans-serif;font-weight:600;font-size:.79rem}
+tbody td.right{text-align:right}
+.current-week-row{background:rgba(70,196,220,.05)!important}
+.current-week-row td{font-weight:600}
+.this-week-pill{
+  display:inline-block;background:var(--arctic);color:var(--indigo);
+  font-size:.57rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  padding:.12rem .38rem;border-radius:3px;margin-left:.4rem;vertical-align:middle;
+}
+.empty-history{padding:2.5rem;text-align:center;color:var(--muted);font-size:.82rem}
+
+footer{text-align:center;padding:2rem;font-size:.67rem;color:var(--muted);letter-spacing:.05em}
+
+@media(max-width:900px){
+  .blend-row{grid-template-columns:1fr 1fr;padding:1rem}
+  .blend-identity{grid-column:1/-1}
+  .to-roast-group{grid-column:1/-1;flex-direction:row;align-items:center;gap:.75rem;padding:.5rem 0}
+  .to-roast-value{font-size:1.9rem}
+  .totals-bar{grid-template-columns:repeat(2,1fr)}
+  .session-footer{grid-template-columns:1fr}
+  .venue-row{grid-template-columns:4px 1fr}
+  .venue-select-wrap{grid-column:2/3;justify-self:start}
+}
+@media(max-width:600px){
+  main{padding:1rem}
+  .totals-bar{grid-template-columns:1fr 1fr}
+  .week-hero{flex-direction:column;gap:.5rem}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">OLD QTR <span>/</span> Roast Planner</div>
+  <div class="header-right">
+    <span id="last-updated">Loading...</span>
+    <div class="dot"></div>
+  </div>
+</header>
+
+<div id="loading"><div class="spinner"></div><p>Loading planner...</p></div>
+
+<main id="main">
+
+  <!-- WEEK HERO -->
+  <div class="week-hero">
+    <div>
+      <div class="week-hero-eyebrow">Roast session</div>
+      <div class="week-hero-date" id="hero-date">—</div>
+    </div>
+    <div id="session-badge" class="week-status-badge badge-draft">Draft</div>
+  </div>
+
+  <!-- SETUP BANNER (shown only when table missing) -->
+  <div class="setup-banner" id="setup-banner">
+    <div class="sb-title">One-time setup: run this SQL in Supabase</div>
+    <div class="sb-body">
+      Go to your Supabase project → SQL Editor → paste and run this, then reload:
+      <code id="setup-sql"></code>
+    </div>
+  </div>
+
+  <!-- FORMULA -->
+  <div class="formula-bar">
+    <span class="f-var">Par Level</span>
+    <span style="color:var(--muted)">−</span>
+    <span class="f-var">Stock on Hand</span>
+    <span style="color:var(--muted)">=</span>
+    <span class="f-result">Kg to Roast</span>
+    <span class="f-note">Stock on hand = what remains after this week's orders have left the warehouse</span>
+  </div>
+
+  <!-- PLANNER ROWS (blends only) -->
+  <div class="planner-grid" id="planner-grid"></div>
+
+  <!-- VENUE MILK — separate, no par -->
+  <div class="venue-row" id="venue-milk-row">
+    <div class="venue-row-bar"></div>
+    <div class="venue-left">
+      <div class="venue-name">Venue — Milk Espresso</div>
+      <div class="venue-code">OQ VENUES</div>
+      <div class="venue-note">Roasted to order each week — no par level held. Select which blend venues are on.</div>
+    </div>
+    <div class="venue-select-wrap">
+      <div class="venue-select-label">Brewing this week</div>
+      <select class="venue-select" id="venue-blend">
+        <option value="">— select —</option>
+        <option value="Village Blend">Village Blend</option>
+        <option value="Cloud Nine">Cloud Nine</option>
+        <option value="Euphoria">Euphoria</option>
+        <option value="Vietnam K'Ho">Vietnam K'Ho</option>
+        <option value="Rotating / Mixed">Rotating / Mixed</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- TOTALS -->
+  <div class="totals-bar">
+    <div class="total-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--arctic)"></div>
+      <div class="tc-label">Total Ordered</div>
+      <div class="tc-value" id="total-ordered">—</div>
+    </div>
+    <div class="total-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--tawny)"></div>
+      <div class="tc-label">Total Stock on Hand</div>
+      <div class="tc-value" id="total-stock">—</div>
+    </div>
+    <div class="total-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--muted)"></div>
+      <div class="tc-label">Total Par</div>
+      <div class="tc-value" id="total-par">—</div>
+    </div>
+    <div class="total-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--indigo)"></div>
+      <div class="tc-label">Total to Roast</div>
+      <div class="tc-value" id="total-roast">—</div>
+    </div>
+  </div>
+
+  <!-- NOTES + SUBMIT -->
+  <div class="session-footer">
+    <div>
+      <div class="notes-label">Session notes</div>
+      <textarea class="notes-input" id="session-notes" placeholder="Blend adjustments, stock issues, substitutions, anything unusual this week..."></textarea>
+      <div class="roaster-row">
+        <select class="roaster-select" id="roaster-name">
+          <option value="">— Who's on the roast? —</option>
+          <option value="Nathan">Nathan</option>
+          <option value="Sanne">Sanne</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="save-msg" id="save-msg"></div>
+    </div>
+    <div>
+      <button class="btn-save" id="btn-save" onclick="saveSession()">Save Roast Plan</button>
+      <div class="btn-hint">Saves to Supabase</div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="section-hd">
+    <span class="section-title">13-Week History</span>
+    <div class="section-line"></div>
+    <button onclick="exportCSV()" style="font-size:.67rem;font-family:inherit;background:none;border:1px solid var(--border);border-radius:5px;padding:.25rem .6rem;color:var(--muted);cursor:pointer;flex-shrink:0;white-space:nowrap">↓ CSV</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Order week</th>
+          <th class="right">Village Blend</th>
+          <th class="right">Cloud Nine</th>
+          <th class="right">Euphoria</th>
+          <th class="right">Decaf</th>
+          <th class="right">K'Ho</th>
+          <th>Venues on</th>
+          <th class="right">Total</th>
+          <th>Roaster</th>
+        </tr>
+      </thead>
+      <tbody id="history-body">
+        <tr><td colspan="9" class="empty-history">No history yet — save your first session above.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<footer>OQ Roast Planner · Kg Ordered pulled from Ordermentum via weekly sync · Saves to Supabase</footer>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://poswbggoxhnayvvubpao.supabase.co';
+const ANON_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvc3diZ2dveGhuYXl2dnVicGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjkxMTAsImV4cCI6MjA5NzA0NTExMH0.rT93P50Q8MyBT_6EvkLCW4XRL_vN8WzYmz3i6HZ_Z-0';
+
+// Blend definitions — key matches roast_weekly field prefix (without _kg)
+const BLENDS = [
+  { key:'village_blend', code:'VB',  label:'Village Blend',  color:'#46c4dc', defaultPar:280 },
+  { key:'cloud_nine',    code:'C9',  label:'Cloud Nine',     color:'#61bb4b', defaultPar:160 },
+  { key:'euphoria',      code:'EU',  label:'Euphoria',       color:'#f4932b', defaultPar:60  },
+  { key:'decaf',         code:'DC',  label:'Decaf',          color:'#e0c23a', defaultPar:25  },
+  { key:'vietnam_kho',   code:'KHO', label:"Vietnam K'Ho",   color:'#824e9f', defaultPar:35  },
+];
+
+// SQL to create the roast_plan table (shown in setup banner if table is missing)
+const SETUP_SQL =
+`CREATE TABLE IF NOT EXISTS public.roast_plan (
+  id             BIGSERIAL PRIMARY KEY,
+  week_start     DATE UNIQUE NOT NULL,
+  venue_blend    TEXT,
+  notes          TEXT,
+  submitted_by   TEXT,
+  submitted_at   TIMESTAMPTZ DEFAULT NOW(),
+  vb_ordered_kg  NUMERIC(8,2) DEFAULT 0,
+  vb_par_kg      NUMERIC(8,2) DEFAULT 0,
+  vb_stock_kg    NUMERIC(8,2) DEFAULT 0,
+  vb_roast_kg    NUMERIC(8,2) DEFAULT 0,
+  c9_ordered_kg  NUMERIC(8,2) DEFAULT 0,
+  c9_par_kg      NUMERIC(8,2) DEFAULT 0,
+  c9_stock_kg    NUMERIC(8,2) DEFAULT 0,
+  c9_roast_kg    NUMERIC(8,2) DEFAULT 0,
+  eu_ordered_kg  NUMERIC(8,2) DEFAULT 0,
+  eu_par_kg      NUMERIC(8,2) DEFAULT 0,
+  eu_stock_kg    NUMERIC(8,2) DEFAULT 0,
+  eu_roast_kg    NUMERIC(8,2) DEFAULT 0,
+  dc_ordered_kg  NUMERIC(8,2) DEFAULT 0,
+  dc_par_kg      NUMERIC(8,2) DEFAULT 0,
+  dc_stock_kg    NUMERIC(8,2) DEFAULT 0,
+  dc_roast_kg    NUMERIC(8,2) DEFAULT 0,
+  kho_ordered_kg NUMERIC(8,2) DEFAULT 0,
+  kho_par_kg     NUMERIC(8,2) DEFAULT 0,
+  kho_stock_kg   NUMERIC(8,2) DEFAULT 0,
+  kho_roast_kg   NUMERIC(8,2) DEFAULT 0
+);
+ALTER TABLE public.roast_plan ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_read"   ON public.roast_plan FOR SELECT USING (true);
+CREATE POLICY "anon_insert" ON public.roast_plan FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_update" ON public.roast_plan FOR UPDATE USING (true);`;
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let currentWeekStart = null;
+let orderedKg        = {};   // from roast_weekly
+let existingPlan     = null; // saved roast_plan row for this week, if any
+let historyData      = [];
+
+// ─── UTILITIES ────────────────────────────────────────────────────────────────
+function getCurrentTuesday() {
+  // Returns YYYY-MM-DD of the most recent Tuesday (or today if today IS Tuesday)
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun,1=Mon,2=Tue,...
+  const daysBack = (day + 7 - 2) % 7; // days since last Tuesday
+  const tue = new Date(now);
+  tue.setDate(now.getDate() - daysBack);
+  return tue.toISOString().slice(0, 10);
+}
+
+function fmtWeekRange(weekStartStr) {
+  const tue = new Date(weekStartStr + 'T00:00:00');
+  const mon = new Date(weekStartStr + 'T00:00:00');
+  mon.setDate(mon.getDate() + 6);
+  const o = { day:'numeric', month:'short' };
+  return `Tue ${tue.toLocaleDateString('en-AU', o)} – Mon ${mon.toLocaleDateString('en-AU', o)}`;
+}
+
+function fmtKg(n) {
+  const v = parseFloat(n) || 0;
+  return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + 'kg';
+}
+
+async function sbFetch(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + path, {
+    ...opts,
+    headers: {
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${ANON_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`${res.status}: ${txt}`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function tableIsMissing(errMsg) {
+  return errMsg.includes('42P01') || errMsg.includes('does not exist') || errMsg.toLowerCase().includes('relation');
+}
+
+// ─── RENDERING ────────────────────────────────────────────────────────────────
+function renderPlannerRows() {
+  document.getElementById('planner-grid').innerHTML = BLENDS.map(b => {
+    const code    = b.code.toLowerCase();
+    const ordered = parseFloat(orderedKg[b.key + '_kg'] || 0);
+    const par     = existingPlan ? (parseFloat(existingPlan[`${code}_par_kg`])  || b.defaultPar) : b.defaultPar;
+    const stock   = existingPlan ? (parseFloat(existingPlan[`${code}_stock_kg`]) || 0)            : 0;
+    return `
+    <div class="blend-row">
+      <div class="blend-bar" style="background:${b.color}"></div>
+      <div class="blend-identity">
+        <div class="blend-name">${b.label}</div>
+        <div class="blend-code">${b.code}</div>
+      </div>
+      <div class="input-group">
+        <div class="input-label">Kg Ordered <span style="font-weight:400;font-size:.55rem;letter-spacing:0;text-transform:none;color:var(--muted)">(ref only)</span></div>
+        <input class="kg-input readonly" type="number" id="ordered-${b.key}"
+          value="${ordered.toFixed(1)}" readonly tabindex="-1">
+      </div>
+      <div class="input-group">
+        <div class="input-label">Par Level</div>
+        <input class="kg-input" type="number" id="par-${b.key}"
+          value="${par}" min="0" step="0.5"
+          oninput="recalc('${b.key}')" placeholder="${b.defaultPar}">
+      </div>
+      <div class="input-group">
+        <div class="input-label">Stock on Hand <span style="font-weight:400;font-size:.55rem;letter-spacing:0;text-transform:none;color:var(--muted)">(after orders out)</span></div>
+        <input class="kg-input" type="number" id="stock-${b.key}"
+          value="${stock > 0 ? stock : ''}" min="0" step="0.5"
+          oninput="recalc('${b.key}')" placeholder="0">
+      </div>
+      <div class="to-roast-group">
+        <div class="to-roast-label">To Roast</div>
+        <div class="to-roast-value empty" id="result-${b.key}">—</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  BLENDS.forEach(b => recalc(b.key));
+}
+
+function recalc(key) {
+  const par   = parseFloat(document.getElementById('par-'   + key)?.value) || 0;
+  const stock = parseFloat(document.getElementById('stock-' + key)?.value) || 0;
+  const toRoast = par - stock;
+  const el    = document.getElementById('result-' + key);
+  if (!el) return;
+
+  if (par === 0 && stock === 0) {
+    el.textContent = '—';
+    el.className = 'to-roast-value empty';
+  } else if (toRoast <= 0) {
+    // Stock on hand is already at or above par — no roast needed
+    el.textContent = '0kg';
+    el.className = 'to-roast-value surplus';
+  } else {
+    el.textContent = fmtKg(toRoast);
+    el.className = 'to-roast-value positive';
+  }
+  updateTotals();
+}
+
+function updateTotals() {
+  let totalOrdered = 0, totalStock = 0, totalPar = 0, totalRoast = 0;
+  BLENDS.forEach(b => {
+    const ordered = parseFloat(document.getElementById('ordered-' + b.key)?.value) || 0;
+    const par     = parseFloat(document.getElementById('par-'     + b.key)?.value) || 0;
+    const stock   = parseFloat(document.getElementById('stock-'   + b.key)?.value) || 0;
+    totalOrdered += ordered;
+    totalPar     += par;
+    totalStock   += stock;
+    totalRoast   += Math.max(0, par - stock);
+  });
+  document.getElementById('total-ordered').textContent = fmtKg(totalOrdered);
+  document.getElementById('total-stock').textContent   = fmtKg(totalStock);
+  document.getElementById('total-par').textContent     = fmtKg(totalPar);
+  document.getElementById('total-roast').textContent   = fmtKg(totalRoast);
+}
+
+function renderHistory() {
+  const tbody = document.getElementById('history-body');
+  if (!historyData.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-history">No history yet — save your first session above.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = historyData.slice(0, 13).map(row => {
+    const isCurrent = row.week_start === currentWeekStart;
+    const total = ['vb','c9','eu','dc','kho'].reduce((s, k) => s + (parseFloat(row[k + '_roast_kg']) || 0), 0);
+    const pill  = isCurrent ? '<span class="this-week-pill">This week</span>' : '';
+    return `<tr class="${isCurrent ? 'current-week-row' : ''}">
+      <td class="name-col">${fmtWeekRange(row.week_start)}${pill}</td>
+      <td class="right">${row.vb_roast_kg  ? fmtKg(row.vb_roast_kg)  : '—'}</td>
+      <td class="right">${row.c9_roast_kg  ? fmtKg(row.c9_roast_kg)  : '—'}</td>
+      <td class="right">${row.eu_roast_kg  ? fmtKg(row.eu_roast_kg)  : '—'}</td>
+      <td class="right">${row.dc_roast_kg  ? fmtKg(row.dc_roast_kg)  : '—'}</td>
+      <td class="right">${row.kho_roast_kg ? fmtKg(row.kho_roast_kg) : '—'}</td>
+      <td>${row.venue_blend || '—'}</td>
+      <td class="right" style="font-weight:700">${fmtKg(total)}</td>
+      <td>${row.submitted_by || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateBadge(saved) {
+  const el = document.getElementById('session-badge');
+  el.className = 'week-status-badge ' + (saved ? 'badge-saved' : 'badge-draft');
+  el.textContent = saved ? 'Saved ✓' : 'Draft';
+}
+
+// ─── SAVE ─────────────────────────────────────────────────────────────────────
+async function saveSession() {
+  const btn = document.getElementById('btn-save');
+  const msg = document.getElementById('save-msg');
+  btn.disabled = true;
+  btn.className = 'btn-save saving';
+  btn.textContent = 'Saving...';
+  msg.textContent = '';
+  msg.className = 'save-msg';
+
+  const payload = {
+    week_start:   currentWeekStart,
+    venue_blend:  document.getElementById('venue-blend').value   || null,
+    notes:        document.getElementById('session-notes').value || null,
+    submitted_by: document.getElementById('roaster-name').value  || null,
+    submitted_at: new Date().toISOString(),
+  };
+
+  BLENDS.forEach(b => {
+    const code    = b.code.toLowerCase();
+    const ordered = parseFloat(document.getElementById('ordered-' + b.key)?.value) || 0;
+    const par     = parseFloat(document.getElementById('par-'     + b.key)?.value) || 0;
+    const stock   = parseFloat(document.getElementById('stock-'   + b.key)?.value) || 0;
+    const roast   = Math.max(0, par - stock);
+    payload[`${code}_ordered_kg`] = ordered;
+    payload[`${code}_par_kg`]     = par;
+    payload[`${code}_stock_kg`]   = stock;
+    payload[`${code}_roast_kg`]   = roast;
+  });
+
+  try {
+    await sbFetch('/rest/v1/roast_plan', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(payload),
+    });
+
+    existingPlan = payload;
+    updateBadge(true);
+    msg.textContent = '✓ Saved at ' + new Date().toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit' });
+    msg.className = 'save-msg ok';
+
+    await loadHistory();
+    renderHistory();
+
+  } catch (e) {
+    msg.textContent = 'Save failed: ' + e.message;
+    msg.className = 'save-msg err';
+    if (tableIsMissing(e.message)) showSetupBanner();
+  } finally {
+    btn.disabled = false;
+    btn.className = 'btn-save';
+    btn.textContent = 'Save Roast Plan';
+  }
+}
+
+// ─── CSV EXPORT ───────────────────────────────────────────────────────────────
+function exportCSV() {
+  const headers = [
+    'Week Start','Order Week',
+    'VB Roast','C9 Roast','EU Roast','DC Roast','KHO Roast','Total Roast',
+    'VB Ordered','C9 Ordered','EU Ordered','DC Ordered','KHO Ordered',
+    'VB Par','C9 Par','EU Par','DC Par','KHO Par',
+    'VB Stock','C9 Stock','EU Stock','DC Stock','KHO Stock',
+    'Venues On','Notes','Submitted By','Submitted At'
+  ];
+  const rows = historyData.map(r => {
+    const total = ['vb','c9','eu','dc','kho'].reduce((s,k) => s + (parseFloat(r[k+'_roast_kg'])||0), 0);
+    return [
+      r.week_start, fmtWeekRange(r.week_start),
+      r.vb_roast_kg||0, r.c9_roast_kg||0, r.eu_roast_kg||0, r.dc_roast_kg||0, r.kho_roast_kg||0,
+      total.toFixed(2),
+      r.vb_ordered_kg||0, r.c9_ordered_kg||0, r.eu_ordered_kg||0, r.dc_ordered_kg||0, r.kho_ordered_kg||0,
+      r.vb_par_kg||0, r.c9_par_kg||0, r.eu_par_kg||0, r.dc_par_kg||0, r.kho_par_kg||0,
+      r.vb_stock_kg||0, r.c9_stock_kg||0, r.eu_stock_kg||0, r.dc_stock_kg||0, r.kho_stock_kg||0,
+      (r.venue_blend||'').replace(/,/g,' '),
+      (r.notes||'').replace(/,/g,' '),
+      r.submitted_by||'', r.submitted_at||''
+    ].join(',');
+  });
+  const csv  = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `OQ_Roast_Plan_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── DATA LOADING ─────────────────────────────────────────────────────────────
+async function loadOrderedKg(weekStart) {
+  try {
+    const data = await sbFetch(`/rest/v1/roast_weekly?select=*&week_start=eq.${weekStart}&limit=1`);
+    if (data && data.length) {
+      const r = data[0];
+      return {
+        village_blend_kg: r.village_blend_kg || 0,
+        cloud_nine_kg:    r.cloud_nine_kg    || 0,
+        euphoria_kg:      r.euphoria_kg      || 0,
+        decaf_kg:         r.decaf_kg         || 0,
+        vietnam_kho_kg:   r.vietnam_kho_kg   || 0,
+      };
+    }
+  } catch (e) { console.warn('roast_weekly load failed:', e); }
+  return {};
+}
+
+async function loadExistingPlan(weekStart) {
+  try {
+    const data = await sbFetch(`/rest/v1/roast_plan?select=*&week_start=eq.${weekStart}&limit=1`);
+    if (data && data.length) return data[0];
+    return null;
+  } catch (e) {
+    if (tableIsMissing(e.message)) showSetupBanner();
+    return null;
+  }
+}
+
+async function loadHistory() {
+  try {
+    const data = await sbFetch('/rest/v1/roast_plan?select=*&order=week_start.desc&limit=13');
+    if (data) historyData = data;
+  } catch (e) { historyData = []; }
+}
+
+function showSetupBanner() {
+  const banner = document.getElementById('setup-banner');
+  document.getElementById('setup-sql').textContent = SETUP_SQL;
+  banner.style.display = 'block';
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    currentWeekStart = getCurrentTuesday();
+    document.getElementById('hero-date').textContent = fmtWeekRange(currentWeekStart);
+    document.getElementById('last-updated').textContent =
+      'Updated ' + new Date().toLocaleDateString('en-AU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+
+    const [ordered, plan] = await Promise.all([
+      loadOrderedKg(currentWeekStart),
+      loadExistingPlan(currentWeekStart),
+      loadHistory(),
+    ]);
+
+    orderedKg    = ordered;
+    existingPlan = plan;
+
+    // Pre-fill saved values
+    if (plan) {
+      if (plan.venue_blend)  document.getElementById('venue-blend').value    = plan.venue_blend;
+      if (plan.notes)        document.getElementById('session-notes').value  = plan.notes;
+      if (plan.submitted_by) document.getElementById('roaster-name').value   = plan.submitted_by;
+    }
+
+    renderPlannerRows();
+    renderHistory();
+    updateBadge(!!plan);
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main').style.display    = 'block';
+
+  } catch (e) {
+    document.getElementById('loading').innerHTML =
+      `<p style="color:var(--coral);padding:2rem;text-align:center">Failed to load: ${e.message}</p>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
