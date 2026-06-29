@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OQ / Order Tracker</title>
+<title>OQ Roast Plan</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -100,22 +100,19 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 <body>
 
 <header>
-  <div class="logo">OLD QTR <span>/</span> Order Tracker</div>
+  <div class="logo">OLD QTR <span>/</span> Roast Plan</div>
   <div class="header-right">
     <span id="last-updated">Loading...</span>
     <div class="dot"></div>
   </div>
 </header>
 
-<div id="loading"><div class="spinner"></div><p>Pulling order data...</p></div>
+<div id="loading"><div class="spinner"></div><p>Pulling roast data...</p></div>
 
 <main id="main">
 
   <div class="week-bar">
-    <div style="display:flex;flex-direction:column;gap:.2rem">
-      <span class="week-label">Order week</span>
-      <span id="current-week-range" style="font-size:.85rem;font-weight:600;color:var(--indigo);font-family:'Clash Grotesk',sans-serif"></span>
-    </div>
+    <span class="week-label">Week of</span>
     <div class="week-selector" id="week-selector"></div>
   </div>
 
@@ -141,7 +138,7 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
     </div>
     <div class="card">
       <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--tawny)"></div>
-      <div class="card-label">Total KG Ordered</div>
+      <div class="card-label">Total Roast Required</div>
       <div class="card-value" id="total-all">—</div>
       <div class="card-sub" id="total-all-sub"></div>
     </div>
@@ -180,7 +177,7 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 
 </main>
 
-<footer>OQ Order Tracker · Data from Ordermentum · Ordering week: Tuesday – Monday · Updates every Tuesday</footer>
+<footer>OQ Roast Plan Analytics · Data from Ordermentum · Updates every Tuesday</footer>
 
 <script>
 const SUPABASE_URL = 'https://poswbggoxhnayvvubpao.supabase.co';
@@ -207,16 +204,7 @@ const fmtKg = n => (+n||0).toFixed(1)+'kg';
 const fmtKgShort = n => (+n||0).toFixed(0)+'kg';
 
 function weekLabel(d) {
-  const tue = new Date(d+'T00:00:00');
-  const mon = new Date(d+'T00:00:00');
-  mon.setDate(mon.getDate() + 6);
-  const opts = {day:'numeric',month:'short'};
-  return tue.toLocaleDateString('en-AU',opts) + ' – ' + mon.toLocaleDateString('en-AU',opts);
-}
-
-function weekLabelShort(d) {
-  const tue = new Date(d+'T00:00:00');
-  return tue.toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+  return new Date(d+'T00:00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'});
 }
 
 function getRow(week) { return allData.find(r => r.week_start === week) || {}; }
@@ -247,11 +235,8 @@ function rolling(field, beforeWeek, n=4) {
 
 function renderWeekSelector() {
   document.getElementById('week-selector').innerHTML = weeks.slice(0,8).map(w =>
-    `<button class="week-btn${w===currentWeek?' active':''}" onclick="selectWeek('${w}')">${weekLabelShort(w)}</button>`
+    `<button class="week-btn${w===currentWeek?' active':''}" onclick="selectWeek('${w}')">${weekLabel(w)}</button>`
   ).join('');
-  // Update the prominent week range display
-  const rangeEl = document.getElementById('current-week-range');
-  if (rangeEl) rangeEl.textContent = weekLabel(currentWeek);
 }
 
 function renderScorecard(row, prev) {
@@ -394,18 +379,27 @@ function selectWeek(w) {
 
 async function init() {
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/roast_weekly?select=*&order=week_start.desc&limit=200`,
-      { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
-    );
+    const [res, syncRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/roast_weekly?select=*&order=week_start.desc&limit=200`,
+        { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }),
+      fetch(`${SUPABASE_URL}/rest/v1/sync_log?select=*&id=eq.roast`,
+        { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } })
+    ]);
     allData = await res.json();
+    const syncLog = await syncRes.json();
     weeks = allData.map(r => r.week_start).sort((a,b) => b.localeCompare(a));
     currentWeek = weeks[0];
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('main').style.display = 'block';
-    document.getElementById('last-updated').textContent =
-      'Updated ' + new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    if (syncLog && syncLog[0] && syncLog[0].last_synced_at) {
+      const syncDt = new Date(syncLog[0].last_synced_at);
+      const opts = {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Australia/Brisbane'};
+      document.getElementById('last-updated').textContent =
+        'Last updated ' + syncDt.toLocaleString('en-AU', opts);
+    } else {
+      document.getElementById('last-updated').textContent = 'Last updated —';
+    }
 
     renderWeekSelector();
     renderAll();
