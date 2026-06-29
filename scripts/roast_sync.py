@@ -162,6 +162,13 @@ def main():
         "updated_at":       datetime.now(timezone.utc).isoformat(),
     }, on_conflict="week_start").execute()
 
+    # Write sync timestamp so dashboard can show "last updated by workflow"
+    sb.table("sync_log").upsert({
+        "id": "roast",
+        "last_synced_at": datetime.now(timezone.utc).isoformat(),
+        "synced_by": "github_actions",
+    }, on_conflict="id").execute()
+
     print(f"  Week {week_start_date} written ✓")
     print("=" * 55)
 
