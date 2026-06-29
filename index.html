@@ -214,8 +214,10 @@ const fmtKg = n => (+n).toFixed(1)+'kg';
 const fmtPct = n => (+n).toFixed(0)+'%';
 
 function weekLabel(d) {
-  const dt = new Date(d+'T00:00:00');
-  return dt.toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+  const start = new Date(d+'T00:00:00');
+  const end = new Date(start); end.setDate(end.getDate() + 6);
+  const opts = {day:'numeric',month:'short'};
+  return start.toLocaleDateString('en-AU',opts) + ' – ' + end.toLocaleDateString('en-AU',opts);
 }
 
 function getWeekData(week) {
@@ -462,23 +464,31 @@ function renderAll() {
 
 async function init() {
   try {
-    const [partners, weeklyOrders, summaries] = await Promise.all([
-      H.get('partners?select=*&order=name'),
+    const [partners, weeklyOrders, summaries, syncLog] = await Promise.all([
+      H.get('partners?select=*&order=name&former_partner=eq.false'),
       H.get('weekly_orders?select=*&limit=10000&order=week_start.desc'),
-      H.get('order_summary?select=*')
+      H.get('order_summary?select=*'),
+      H.get('sync_log?select=*&id=eq.wholesale')
     ]);
 
+    const activeIds = new Set(partners.map(p => p.id));
     allPartners = partners;
-    allWeeklyOrders = weeklyOrders;
-    allSummaries = summaries;
+    allWeeklyOrders = weeklyOrders.filter(w => activeIds.has(w.partner_id));
+    allSummaries = summaries.filter(s => activeIds.has(s.partner_id));
 
     weeks = [...new Set(weeklyOrders.map(w => w.week_start))].sort((a,b) => b.localeCompare(a));
     currentWeek = weeks[0];
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('main').style.display = 'block';
-    document.getElementById('last-updated').textContent =
-      'Updated ' + new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    if (syncLog && syncLog[0] && syncLog[0].last_synced_at) {
+      const syncDt = new Date(syncLog[0].last_synced_at);
+      const opts = {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Australia/Brisbane'};
+      document.getElementById('last-updated').textContent =
+        'Last updated ' + syncDt.toLocaleString('en-AU', opts);
+    } else {
+      document.getElementById('last-updated').textContent = 'Last updated —';
+    }
 
     renderWeekSelector();
     renderAll();
