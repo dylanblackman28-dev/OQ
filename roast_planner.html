@@ -389,14 +389,25 @@ let existingPlan     = null; // saved roast_plan row for this week, if any
 let historyData      = [];
 
 // ─── UTILITIES ────────────────────────────────────────────────────────────────
-function getCurrentTuesday() {
-  // Returns YYYY-MM-DD of the most recent Tuesday (or today if today IS Tuesday)
-  const now = new Date();
-  const day = now.getDay(); // 0=Sun,1=Mon,2=Tue,...
-  const daysBack = (day + 7 - 2) % 7; // days since last Tuesday
-  const tue = new Date(now);
-  tue.setDate(now.getDate() - daysBack);
-  return tue.toISOString().slice(0, 10);
+function getCurrentWeekStart() {
+  // Mirrors ordering_week_range() in roast_sync.py — returns the week_start
+  // date of the most recently COMPLETED ordering week (week closes Tue noon AEST).
+  const AEST_OFFSET_MS = 10 * 60 * 60 * 1000;
+  const nowAEST = new Date(Date.now() + AEST_OFFSET_MS + new Date().getTimezoneOffset() * 60000);
+
+  // Find this Tuesday noon AEST
+  const daysSinceTue = (nowAEST.getDay() + 7 - 2) % 7;
+  const thisTueNoon = new Date(nowAEST);
+  thisTueNoon.setDate(nowAEST.getDate() - daysSinceTue);
+  thisTueNoon.setHours(12, 0, 0, 0);
+
+  // If we haven't reached Tuesday noon yet, the cutover is the previous Tuesday
+  if (nowAEST < thisTueNoon) thisTueNoon.setDate(thisTueNoon.getDate() - 7);
+
+  // week_start = one week before the cutover Tuesday
+  const weekStart = new Date(thisTueNoon);
+  weekStart.setDate(weekStart.getDate() - 7);
+  return weekStart.toISOString().slice(0, 10);
 }
 
 function fmtWeekRange(weekStartStr) {
@@ -676,7 +687,7 @@ function showSetupBanner() {
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
   try {
-    currentWeekStart = getCurrentTuesday();
+    currentWeekStart = getCurrentWeekStart();
     document.getElementById('hero-date').textContent = fmtWeekRange(currentWeekStart);
     document.getElementById('last-updated').textContent =
       'Updated ' + new Date().toLocaleDateString('en-AU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
