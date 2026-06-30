@@ -204,7 +204,10 @@ const fmtKg = n => (+n||0).toFixed(1)+'kg';
 const fmtKgShort = n => (+n||0).toFixed(0)+'kg';
 
 function weekLabel(d) {
-  return new Date(d+'T00:00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+  const start = new Date(d+'T00:00:00');
+  const end = new Date(start); end.setDate(end.getDate() + 6);
+  const opts = {day:'numeric',month:'short'};
+  return start.toLocaleDateString('en-AU',opts) + ' – ' + end.toLocaleDateString('en-AU',opts);
 }
 
 function getRow(week) { return allData.find(r => r.week_start === week) || {}; }
