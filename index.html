@@ -321,7 +321,7 @@ function renderScorecard(data) {
   document.getElementById('total-kg').textContent = fmtKg(totalKg);
   document.getElementById('kg-trend').innerHTML = prevKg ? `vs ${fmtKg(prevKg)} prev week ${trendArrow(totalKg, prevKg)}` : `across ${data.length} partners`;
   document.getElementById('active-partners').textContent = active;
-  document.getElementById('active-sub').textContent = `of ${data.length} partners ordered`;
+  document.getElementById('active-sub').textContent = `of ${allPartners.length} active partners`;
   document.getElementById('late-orders').textContent = late;
   document.getElementById('late-sub').textContent = `of ${totalOrders} total orders (${totalOrders ? (late/totalOrders*100).toFixed(0) : 0}%)`;
   document.getElementById('week-revenue').textContent = fmt(revenue);
