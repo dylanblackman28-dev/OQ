@@ -33,7 +33,8 @@ header{background:var(--indigo);padding:0 2rem;display:flex;align-items:center;j
 main{max-width:1200px;margin:0 auto;padding:2rem;display:none}
 
 /* WEEK SELECTOR */
-.week-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.week-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:1rem}
+.week-legend{font-size:.72rem;color:var(--muted);margin-bottom:2rem;line-height:1.5;max-width:680px}
 .week-label{font-size:.72rem;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
 .week-selector{display:flex;gap:.5rem;flex-wrap:wrap}
 .week-btn{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:.4rem .75rem;font-size:.8rem;font-weight:500;color:var(--indigo);cursor:pointer;transition:all .15s;font-family:inherit}
@@ -114,6 +115,9 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
   <div class="week-bar">
     <span class="week-label">Week Starting</span>
     <div class="week-selector" id="week-selector"></div>
+  </div>
+  <div class="week-legend">
+    Tracking window: Tuesday 12:00pm → following Tuesday 11:59am. Orders placed Tuesday 12:00am–11:59am count toward the week that's closing (fulfilled same-day, after the official cutoff).
   </div>
 
   <!-- SCORECARD -->
@@ -273,6 +277,22 @@ function renderBlendCards(row, prev, blends, containerId) {
   const el = document.getElementById(containerId);
   el.innerHTML = blends.map(b => {
     const kg = +(row[b.field]||0);
+
+    // Rising Sun: roast-to-order, no par level — show order count + dates instead of WoW/avg
+    if (b.field === 'rising_sun_kg') {
+      const count = row.rising_sun_order_count || 0;
+      const dates = row.rising_sun_order_dates || '';
+      const orderLabel = count === 1 ? '1 Order' : `${count} Orders`;
+      const sub = count > 0 ? `${orderLabel}. ${dates}.` : 'No orders this week';
+      return `<div class="blend-card" style="border-top:4px solid ${b.color}">
+        <div class="blend-name">${b.label}${b.note ? `<span style="font-weight:400;margin-left:.5rem;opacity:.6">${b.note}</span>` : ''}</div>
+        <div class="blend-kg" style="color:${b.color}">${fmtKg(kg)}</div>
+        <div class="blend-meta">
+          <span class="blend-avg">${sub}</span>
+        </div>
+      </div>`;
+    }
+
     const prevKg = +(prev[b.field]||0);
     const pct = prevKg ? (kg-prevKg)/prevKg*100 : null;
     const avg = rolling(b.field, currentWeek);
