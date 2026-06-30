@@ -38,28 +38,27 @@ def ordering_week_range():
     """
     Returns the most recently COMPLETED ordering week.
     Week runs: Tuesday 12:00 noon AEST -> following Tuesday 11:59 AM AEST.
-    Works correctly regardless of what day the script is triggered.
+    Late orders (Tue 00:00-11:59) are counted INTO the week that is closing,
+    since fulfilment packs and ships them same-day.
 
-    Example running on Tuesday 30 June 2026:
-      - Most recent Tuesday noon = 30 June 12:00
-      - Last completed week = Tue 23 June 12:00 -> Tue 30 June 11:59  ✓
-
-    Example running on Monday 29 June 2026:
-      - Most recent Tuesday noon = 23 June 12:00 (current open week)
-      - Last completed week = Tue 16 June 12:00 -> Tue 23 June 11:59  ✓
+    Example running Tuesday 30 June 2026 (any time):
+      - This Tuesday noon = 30 June 12:00
+      - If now < this Tuesday noon -> still in last week's late window,
+        so the week closing is Tue 23 June 12:00 -> Tue 30 June 11:59
+      - If now >= this Tuesday noon -> that week just closed,
+        so the week closing is also Tue 23 June 12:00 -> Tue 30 June 11:59
+        (the new week, Tue 30 June 12:00 onwards, has not closed yet)
     """
     now_aest = datetime.now(AEST)
-    # Find the most recent Tuesday noon
     days_since_tuesday = (now_aest.weekday() - 1) % 7
     this_tuesday_noon = (now_aest - timedelta(days=days_since_tuesday)).replace(
         hour=12, minute=0, second=0, microsecond=0)
-    # If we haven't reached Tuesday noon yet today, go back one more week
+    # If we haven't reached this Tuesday's noon cutover yet, the week that's
+    # closing is the one before it
     if now_aest < this_tuesday_noon:
         this_tuesday_noon -= timedelta(days=7)
-    # Last completed week
-    week_start = this_tuesday_noon - timedelta(days=7)  # Tue noon, 1 week ago
-    week_end = this_tuesday_noon.replace(
-        hour=11, minute=59, second=59)  # This Tuesday 11:59 AM
+    week_start = this_tuesday_noon - timedelta(days=7)   # Tue noon, 1 week before cutover
+    week_end = this_tuesday_noon.replace(hour=11, minute=59, second=59)  # cutover Tue 11:59am
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     return (
         week_start.astimezone(timezone.utc).strftime(fmt),
@@ -130,21 +129,34 @@ def main():
     print(f"\n[3/4] Processing line items...")
     totals = defaultdict(float)
     order_count = 0
+    rising_sun_dates = []
 
     for order in all_orders:
         if order.get("cancelled"): continue
         order_count += 1
         detail = om_get(f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
+        order_has_rising_sun = False
         for item in detail.get("lineItems", []):
             field = classify(item.get("name", ""), item.get("SKU", ""))
             if not field: continue
             kg = extract_kg(item.get("name", ""), item.get("quantity", 0) or 0)
             totals[field] += kg
+            if field == "rising_sun_kg":
+                order_has_rising_sun = True
+        if order_has_rising_sun:
+            created_at = order.get("createdAt", "")
+            try:
+                dt = datetime.fromisoformat(created_at.replace("Z", "+00:00")).astimezone(AEST)
+                rising_sun_dates.append(dt.strftime("%d/%m/%y"))
+            except Exception:
+                pass
         time.sleep(0.1)
 
     print(f"  {order_count} orders processed")
     for field, kg in sorted(totals.items()):
         print(f"  {field}: {kg:.1f}kg")
+    if rising_sun_dates:
+        print(f"  Rising Sun orders on: {', '.join(rising_sun_dates)}")
 
     print(f"\n[4/4] Writing to Supabase...")
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -159,6 +171,8 @@ def main():
         "venue_milk_kg":    round(totals.get("venue_milk_kg", 0), 2),
         "venue_black_kg":   round(totals.get("venue_black_kg", 0), 2),
         "total_orders":     order_count,
+        "rising_sun_order_count": len(rising_sun_dates),
+        "rising_sun_order_dates": ", ".join(rising_sun_dates),
         "updated_at":       datetime.now(timezone.utc).isoformat(),
     }, on_conflict="week_start").execute()
 
