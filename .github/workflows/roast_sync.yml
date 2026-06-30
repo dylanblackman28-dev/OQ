@@ -6,8 +6,10 @@ on:
     - cron: '30 20 * * 0'
     # Tuesday 6:30am AEST = Monday 20:30 UTC
     - cron: '30 20 * * 1'
-    # Tuesday 12:00 noon AEST = Tuesday 02:00 UTC
-    - cron: '0 2 * * 2'
+    # Tuesday 12:15pm AEST = Tuesday 02:15 UTC
+    - cron: '15 2 * * 2'
+    # Tuesday 12:45pm AEST = Tuesday 02:45 UTC (backup)
+    - cron: '45 2 * * 2'
     # Wednesday 6:30am AEST = Tuesday 20:30 UTC
     - cron: '30 20 * * 2'
     # Friday 6:30am AEST = Thursday 20:30 UTC
