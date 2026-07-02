@@ -365,12 +365,16 @@ def sync_week(token, sb, weeks_ago):
 
 def main():
     backfill_weeks = int(os.environ.get("BACKFILL_WEEKS", "0") or 0)
+    # Offset lets a long backfill run in chunks, e.g. offset=52 weeks=51
+    # rewrites weeks 52-103 ago without touching more recent weeks.
+    backfill_offset = int(os.environ.get("BACKFILL_OFFSET", "0") or 0)
 
     print("=" * 60)
     print(f"OQ Wholesale Sync — "
           f"{datetime.now(AEST).strftime('%A %d %B %Y %I:%M %p AEST')}")
-    if backfill_weeks:
-        print(f"BACKFILL MODE: rewriting the last {backfill_weeks + 1} weeks")
+    if backfill_weeks or backfill_offset:
+        print(f"BACKFILL MODE: weeks {backfill_offset} to "
+              f"{backfill_offset + backfill_weeks} ago")
     print("=" * 60)
 
     print("\n[1/3] Authenticating with Ordermentum...")
@@ -381,7 +385,8 @@ def main():
 
     print(f"\n[2/3] Syncing week(s)...")
     # Oldest first so refresh_order_summary ends on complete data
-    for weeks_ago in range(backfill_weeks, -1, -1):
+    for weeks_ago in range(backfill_offset + backfill_weeks,
+                           backfill_offset - 1, -1):
         sync_week(token, sb, weeks_ago)
 
     # Write sync timestamp so dashboard can show "last updated by workflow"
