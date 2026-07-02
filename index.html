@@ -267,33 +267,46 @@ function drawLineSVG(svgEl, data, color='#46c4dc', showArea=true) {
   if (!data.length) return;
   const w = svgEl.clientWidth || 600;
   const h = svgEl.clientHeight || 140;
-  const pad = {t:10,r:10,b:24,l:40};
+  const pad = {t:12,r:14,b:30,l:52};
   const maxV = Math.max(...data.map(d=>d.v), 1);
-  const x = i => pad.l + (i/(data.length-1||1)) * (w - pad.l - pad.r);
+
+  // X scale: position by actual date when available so gaps in the data
+  // don't compress the timeline; fall back to even index spacing.
+  const hasT = data.every(d => d.t);
+  const tMin = hasT ? Math.min(...data.map(d=>d.t)) : 0;
+  const tMax = hasT ? Math.max(...data.map(d=>d.t)) : 1;
+  const x = i => hasT && tMax > tMin
+    ? pad.l + ((data[i].t - tMin)/(tMax - tMin)) * (w - pad.l - pad.r)
+    : pad.l + (i/(data.length-1||1)) * (w - pad.l - pad.r);
   const y = v => pad.t + (1 - v/maxV) * (h - pad.t - pad.b);
 
   const pts = data.map((d,i) => `${x(i)},${y(d.v)}`);
 
   let svg = '';
+  // y-axis gridlines + tick labels (kg)
+  [0,0.25,0.5,0.75,1].forEach(f => {
+    const val = maxV * f;
+    const yp = y(val);
+    svg += `<line x1="${pad.l}" y1="${yp}" x2="${w-pad.r}" y2="${yp}" stroke="#0f135a" stroke-opacity="0.06" stroke-width="1"/>`;
+    if (f === 0 || f === 0.5 || f === 1) {
+      svg += `<text x="${pad.l-6}" y="${yp+3}" text-anchor="end" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${val.toFixed(0)}kg</text>`;
+    }
+  });
+
   if (showArea && data.length > 1) {
-    svg += `<path d="M${x(0)},${y(0)} ${pts.join(' ')} L${x(data.length-1)},${h-pad.b} L${x(0)},${h-pad.b} Z" fill="${color}" opacity="0.1"/>`;
+    svg += `<path d="M${pts[0]} ${pts.slice(1).map(p=>'L'+p).join(' ')} L${x(data.length-1)},${h-pad.b} L${x(0)},${h-pad.b} Z" fill="${color}" opacity="0.1"/>`;
   }
   if (data.length > 1) {
     svg += `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   }
-  // dots
+  // dots + x labels: first, last, and evenly spaced in between (max ~6 total)
+  const step = Math.max(1, Math.ceil((data.length - 1) / 5));
   data.forEach((d,i) => {
-    svg += `<circle cx="${x(i)}" cy="${y(d.v)}" r="3" fill="${color}"/>`;
-    if (i % Math.ceil(data.length/6) === 0 || i === data.length-1) {
-      svg += `<text x="${x(i)}" y="${h-pad.b+14}" text-anchor="middle" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${d.label||''}</text>`;
+    svg += `<circle cx="${x(i)}" cy="${y(d.v)}" r="3" fill="${color}"><title>${d.label||''}: ${d.v.toFixed(1)}kg</title></circle>`;
+    const isLabelled = i === data.length-1 || (i % step === 0 && (data.length-1 - i) >= step/2);
+    if (isLabelled) {
+      svg += `<text x="${x(i)}" y="${h-pad.b+16}" text-anchor="middle" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${d.label||''}</text>`;
     }
-  });
-  // y-axis labels
-  [0,0.5,1].forEach(f => {
-    const val = maxV * f;
-    const yp = y(val);
-    svg += `<text x="${pad.l-4}" y="${yp+4}" text-anchor="end" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${val.toFixed(0)}</text>`;
-    svg += `<line x1="${pad.l}" y1="${yp}" x2="${w-pad.r}" y2="${yp}" stroke="#0f135a" stroke-opacity="0.06" stroke-width="1"/>`;
   });
 
   svgEl.innerHTML = svg;
@@ -331,7 +344,8 @@ function renderScorecard(data) {
 function renderTrendChart() {
   const last12 = weeks.slice(0, 12).reverse();
   const data = last12.map(w => ({
-    label: weekLabel(w).split(' ')[0],
+    label: new Date(w+'T00:00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'}),
+    t: new Date(w+'T00:00:00').getTime(),
     v: getWeekData(w).reduce((s,d) => s + +d.kg_ordered, 0)
   }));
   const svg = document.getElementById('trend-svg');
@@ -427,7 +441,16 @@ function openModal(pid) {
     <div class="stat-box"><div class="stat-label">Avg KG/wk</div><div class="stat-value">${s.avg_kg_per_week ? fmtKg(s.avg_kg_per_week) : '—'}</div></div>
   `;
 
-  const chartData = pw.map(w => ({ label: weekLabel(w.week_start).split(' ')[0], v: +w.kg_ordered }));
+  // If history spans more than ~11 months, include the year in labels
+  const spanMs = pw.length > 1
+    ? new Date(pw[pw.length-1].week_start).getTime() - new Date(pw[0].week_start).getTime() : 0;
+  const labelOpts = spanMs > 330*24*3600*1000
+    ? {month:'short', year:'2-digit'} : {day:'numeric', month:'short'};
+  const chartData = pw.map(w => ({
+    label: new Date(w.week_start+'T00:00:00').toLocaleDateString('en-AU', labelOpts),
+    t: new Date(w.week_start+'T00:00:00').getTime(),
+    v: +w.kg_ordered
+  }));
   document.getElementById('modal-bg').classList.add('open');
   requestAnimationFrame(() => {
     const svg = document.getElementById('modal-svg');

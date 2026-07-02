@@ -113,13 +113,14 @@ def extract_kg(name, qty):
 
 
 # ── Date range helpers ────────────────────────────────────────────────────────
-def ordering_week_range():
+def ordering_week_range(weeks_ago=0):
     """
-    Most recently completed ordering week.
+    Most recently completed ordering week (or an earlier one via weeks_ago).
     Week runs: Tuesday 12:00 noon AEST -> following Tuesday 11:59 AM AEST.
     Late orders: Tuesday 00:00 -> Tuesday 11:59 AM (before noon cutover).
     Script runs Thursday — last completed week closed Tuesday 11:59 AM this week.
 
+    weeks_ago=0 is the most recently completed week; 1 is the week before, etc.
     week_start returned is the DATE of the Tuesday, used as the DB key.
     """
     now_aest = datetime.now(AEST)
@@ -128,7 +129,7 @@ def ordering_week_range():
     this_tuesday = (now_aest - timedelta(days=days_since_tuesday)).replace(
         hour=12, minute=0, second=0, microsecond=0)
     # Last completed week: the Tuesday before that
-    last_tuesday = this_tuesday - timedelta(days=7)
+    last_tuesday = this_tuesday - timedelta(days=7) - timedelta(weeks=weeks_ago)
     week_start_dt = last_tuesday  # Tue 12:00 noon AEST
     week_end_dt = (last_tuesday + timedelta(days=7)).replace(
         hour=11, minute=59, second=59, microsecond=0)  # Following Tue 11:59 AM
@@ -203,7 +204,10 @@ def process_orders(all_orders, token):
         detail = om_get(
             f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
 
-        # Calculate WHS coffee kg for this order
+        # Calculate WHS coffee kg for this order.
+        # Decaf still marks the order as a WHS coffee order (so it counts for
+        # order_count / revenue / late tracking) but its kg is excluded from
+        # kg_ordered totals.
         whs_kg = 0.0
         has_whs_coffee = False
         for item in detail.get("lineItems", []):
@@ -212,6 +216,8 @@ def process_orders(all_orders, token):
                 continue
             has_whs_coffee = True
             name = item.get("name", "") or ""
+            if "decaf" in name.lower() or "-DEC" in sku.upper():
+                continue
             qty = item.get("quantity", 0) or 0
             whs_kg += extract_kg(name, qty)
 
@@ -327,30 +333,18 @@ def get_first_order_date(token, retailer_id):
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
-def main():
-    print("=" * 60)
-    print(f"OQ Wholesale Sync — "
-          f"{datetime.now(AEST).strftime('%A %d %B %Y %I:%M %p AEST')}")
-    print("=" * 60)
-
-    print("\n[1/5] Authenticating with Ordermentum...")
-    token = om_auth()
-    print("  Authenticated ✓")
-
-    start_utc, end_utc, week_start_date = ordering_week_range()
-    print(f"\n[2/5] Pulling orders for week: "
+def sync_week(token, sb, weeks_ago):
+    start_utc, end_utc, week_start_date = ordering_week_range(weeks_ago)
+    print(f"\n[week] Pulling orders for week: "
           f"{week_start_date} -> {week_start_date + timedelta(days=6)}")
     print(f"  UTC window: {start_utc} -> {end_utc}")
 
     all_orders = pull_orders(token, start_utc, end_utc)
     print(f"  {len(all_orders)} orders pulled ✓")
 
-    print(f"\n[3/5] Processing (tracked partners + OQ-COF-WHS SKUs only)...")
+    print(f"  Processing (tracked partners + OQ-COF-WHS SKUs only)...")
     partner_data = process_orders(all_orders, token)
     print(f"  {len(partner_data)} partners with WHS coffee orders ✓")
-
-    print(f"\n[4/5] Writing to Supabase...")
-    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     for retailer_id, data in partner_data.items():
         print(f"  → {data['name']}: {data['kg']:.1f}kg, "
@@ -365,6 +359,31 @@ def main():
         )
         refresh_order_summary(sb, partner_id)
 
+    print(f"  Week {week_start_date}: {len(partner_data)} partners synced ✓")
+    return week_start_date
+
+
+def main():
+    backfill_weeks = int(os.environ.get("BACKFILL_WEEKS", "0") or 0)
+
+    print("=" * 60)
+    print(f"OQ Wholesale Sync — "
+          f"{datetime.now(AEST).strftime('%A %d %B %Y %I:%M %p AEST')}")
+    if backfill_weeks:
+        print(f"BACKFILL MODE: rewriting the last {backfill_weeks + 1} weeks")
+    print("=" * 60)
+
+    print("\n[1/3] Authenticating with Ordermentum...")
+    token = om_auth()
+    print("  Authenticated ✓")
+
+    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+    print(f"\n[2/3] Syncing week(s)...")
+    # Oldest first so refresh_order_summary ends on complete data
+    for weeks_ago in range(backfill_weeks, -1, -1):
+        sync_week(token, sb, weeks_ago)
+
     # Write sync timestamp so dashboard can show "last updated by workflow"
     sb.table("sync_log").upsert({
         "id": "wholesale",
@@ -372,9 +391,7 @@ def main():
         "synced_by": "github_actions",
     }, on_conflict="id").execute()
 
-    print(f"\n[5/5] Done ✓")
-    print(f"  {len(partner_data)} partners synced")
-    print(f"  Week: {week_start_date}")
+    print(f"\n[3/3] Done ✓")
     print("=" * 60)
 
 
