@@ -165,7 +165,7 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
         <th onclick="sortTable('kg_ordered')" class="sorted">KG ↓</th>
         <th onclick="sortTable('wow')">WoW ↕</th>
         <th onclick="sortTable('rolling4')">4wk Avg ↕</th>
-        <th onclick="sortTable('yoy')">YoY ↕</th>
+        <th onclick="sortTable('yoy')" title="4-week average vs the same period last year">YoY ↕</th>
         <th onclick="sortTable('order_count')">Orders ↕</th>
         <th onclick="sortTable('late_order_count')">Late ↕</th>
         <th onclick="sortTable('late_rate')">Late Rate ↕</th>
@@ -254,16 +254,25 @@ function rollingAvg(pid, beforeWeek, n=4) {
   return slice.reduce((s,w) => s + +w.kg_ordered, 0) / slice.length;
 }
 
-function yoyKg(pid, currentWeekStr) {
-  const dt = new Date(currentWeekStr + 'T00:00:00');
-  const targetMs = dt.getTime() - 365 * 24 * 3600 * 1000;
+function yoyGrowth(pid, currentWeekStr) {
+  // Approximate YoY: recent 4wk avg vs the 4wk avg around the same period
+  // one year (52 weeks) earlier. Returns {cur, prev, pct} or null.
   const pw = weeksForPartner(pid);
-  const close = pw.filter(w => {
+
+  const recent = pw.filter(w => w.week_start <= currentWeekStr).slice(-4);
+  if (!recent.length) return null;
+  const cur = recent.reduce((s,w) => s + +w.kg_ordered, 0) / recent.length;
+
+  const targetMs = new Date(currentWeekStr + 'T00:00:00').getTime() - 52 * 7 * 24 * 3600 * 1000;
+  const lastYear = pw.filter(w => {
     const diff = Math.abs(new Date(w.week_start + 'T00:00:00').getTime() - targetMs);
-    return diff < 30 * 24 * 3600 * 1000;
+    return diff <= 14 * 24 * 3600 * 1000;  // ±2 weeks ≈ a 4-5 week window
   });
-  if (!close.length) return null;
-  return close.reduce((s,w) => s + +w.kg_ordered, 0) / close.length;
+  if (!lastYear.length) return null;
+  const prev = lastYear.reduce((s,w) => s + +w.kg_ordered, 0) / lastYear.length;
+  if (!prev) return null;
+
+  return { cur, prev, pct: (cur - prev) / prev * 100 };
 }
 
 function trendArrow(current, previous) {
@@ -390,8 +399,8 @@ function renderTable(data) {
     const prevWeek = weeks[weeks.indexOf(currentWeek)+1];
     const prevWo = prevWeek ? allWeeklyOrders.find(w => w.partner_id === d.partner_id && w.week_start === prevWeek) : null;
     const roll4 = rollingAvg(d.partner_id, currentWeek, 4);
-    const yoy = yoyKg(d.partner_id, currentWeek);
-    return { ...d, name: p.name||'—', ltv: +s.ltv||0, late_rate: +s.late_rate||0, years_as_customer: +s.years_as_customer||0, wow: prevWo ? +prevWo.kg_ordered : null, rolling4: roll4, yoy };
+    const yoyG = yoyGrowth(d.partner_id, currentWeek);
+    return { ...d, name: p.name||'—', ltv: +s.ltv||0, late_rate: +s.late_rate||0, years_as_customer: +s.years_as_customer||0, wow: prevWo ? +prevWo.kg_ordered : null, rolling4: roll4, yoy: yoyG ? yoyG.pct : null, yoyG };
   });
 
   const sorted = [...enriched].sort((a,b) => {
@@ -414,7 +423,7 @@ function renderTable(data) {
       <td><div class="kg-bar-wrap"><div class="kg-bar" style="width:${barW}px"></div><span class="mono">${fmtKg(kg)}</span></div></td>
       <td>${trendArrow(kg, d.wow)}</td>
       <td class="mono">${d.rolling4 !== null ? fmtKg(d.rolling4) : '—'}</td>
-      <td>${trendArrow(kg, d.yoy)}</td>
+      <td title="4wk avg ${d.yoyG ? fmtKg(d.yoyG.cur) + ' now vs ' + fmtKg(d.yoyG.prev) + ' a year ago' : 'needs a year of history'}">${d.yoyG ? trendArrow(d.yoyG.cur, d.yoyG.prev) : '<span class="trend-flat mono">—</span>'}</td>
       <td class="mono">${d.order_count}</td>
       <td>${lateBadge}</td>
       <td>${lateRateBadge}</td>
