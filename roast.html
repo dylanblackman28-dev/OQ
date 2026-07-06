@@ -158,6 +158,10 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 
   <div class="section-hd"><span class="section-title">Contract & Venue</span><div class="section-line"></div></div>
   <div class="blend-grid" id="other-grid"></div>
+  <div style="font-size:.72rem;color:var(--muted);line-height:1.6;margin:-1rem 0 2rem;padding:.6rem 1rem;background:rgba(15,19,90,.03);border-radius:8px">
+    Venue — Milk &amp; Black Espresso count <strong>brewing coffee only</strong> (OQ-COF-CAFE / OQ-COF-VEN SKUs).
+    Retail bags (OQ-COF-RT) are excluded from all venue figures. Rising Sun Roasters is contract roasting, tracked separately from wholesale.
+  </div>
 
   <!-- TREND CHART -->
   <div class="section-hd"><span class="section-title">12-Week Trend</span><div class="section-line"></div></div>
@@ -177,7 +181,7 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
         <th>Decaf</th><th>K'Ho</th>
         <th>Rising Sun</th>
         <th>Venue Milk</th><th>Venue Black</th>
-        <th>Total</th><th>WoW</th>
+        <th>Total</th><th>WoW</th><th title="Weekly total vs the same period last year (±2wk avg)">YoY</th>
       </tr></thead>
       <tbody id="history-body"></tbody>
     </table>
@@ -326,7 +330,7 @@ function drawTrend() {
   const svgEl = document.getElementById('trend-svg');
   const w = svgEl.clientWidth || 800;
   const h = 220;
-  const pad = {t:10,r:10,b:30,l:45};
+  const pad = {t:10,r:10,b:30,l:56};
 
   const series = [
     {label:'Total WHS', color:'#46c4dc', fields:BLENDS.map(b=>b.field)},
@@ -341,16 +345,17 @@ function drawTrend() {
   const yp = v => pad.t + (1-v/maxV)*(h-pad.t-pad.b);
 
   let svg = '';
-  // Grid
+  // Grid + y-axis labels in kg
   [0,0.25,0.5,0.75,1].forEach(f => {
     const val = maxV*f, yv = yp(val);
     svg += `<line x1="${pad.l}" y1="${yv}" x2="${w-pad.r}" y2="${yv}" stroke="#0f135a" stroke-opacity=".06" stroke-width="1"/>`;
-    svg += `<text x="${pad.l-4}" y="${yv+4}" text-anchor="end" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${val.toFixed(0)}</text>`;
+    svg += `<text x="${pad.l-4}" y="${yv+4}" text-anchor="end" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${val.toFixed(0)}kg</text>`;
   });
-  // X labels
+  // X labels — week-start dates
   last12.forEach((wk,i) => {
     if (i % 3 === 0 || i === last12.length-1) {
-      svg += `<text x="${xp(i)}" y="${h-pad.b+14}" text-anchor="middle" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${weekLabel(wk).split(' ')[0]}</text>`;
+      const lbl = new Date(wk+'T00:00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+      svg += `<text x="${xp(i)}" y="${h-pad.b+14}" text-anchor="middle" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${lbl}</text>`;
     }
   });
   // Lines
@@ -383,6 +388,17 @@ function renderHistory() {
     const pct = prevTotal ? (total-prevTotal)/prevTotal*100 : null;
     const cls = pct !== null ? (pct>5?'wow-up':pct<-5?'wow-down':'wow-flat') : 'wow-flat';
     const arrow = pct !== null ? (pct>5?'↑':pct<-5?'↓':'→') : '';
+
+    // YoY: this week's total vs avg of weeks within ±2wks of 52 weeks earlier
+    const targetMs = new Date(wk+'T00:00:00').getTime() - 52*7*24*3600*1000;
+    const lyWeeks = weeks.filter(w2 => Math.abs(new Date(w2+'T00:00:00').getTime() - targetMs) <= 14*24*3600*1000);
+    const lyAvg = lyWeeks.length
+      ? lyWeeks.reduce((s,w2) => s + all.reduce((t,f) => t + +(getRow(w2)[f]||0), 0), 0) / lyWeeks.length
+      : null;
+    const yoyPct = lyAvg ? (total-lyAvg)/lyAvg*100 : null;
+    const yoyCls = yoyPct !== null ? (yoyPct>5?'wow-up':yoyPct<-5?'wow-down':'wow-flat') : 'wow-flat';
+    const yoyArrow = yoyPct !== null ? (yoyPct>5?'↑':yoyPct<-5?'↓':'→') : '';
+    const yoyTitle = lyAvg !== null ? `${total.toFixed(0)}kg vs ${lyAvg.toFixed(0)}kg avg same period last year` : 'No data a year ago';
     return `<tr class="${wk===currentWeek?'total-row':''}">
       <td class="name-col" style="font-family:'Clash Grotesk',sans-serif">${weekLabel(wk)}${isWeekInProgress(wk) ? '<span class="wip-pill">In progress</span>' : ''}</td>
       ${BLENDS.map(b => `<td>${fmtKgShort(row[b.field]||0)}</td>`).join('')}
@@ -391,6 +407,7 @@ function renderHistory() {
       <td>${fmtKgShort(row.venue_black_kg||0)}</td>
       <td style="font-weight:600">${fmtKgShort(total)}</td>
       <td class="${cls}">${pct!==null?`${arrow} ${Math.abs(pct).toFixed(0)}%`:'—'}</td>
+      <td class="${yoyCls}" title="${yoyTitle}">${yoyPct!==null?`${yoyArrow} ${Math.abs(yoyPct).toFixed(0)}%`:'—'}</td>
     </tr>`;
   }).join('');
   document.getElementById('history-body').innerHTML = rows;
@@ -415,7 +432,7 @@ function selectWeek(w) {
 async function init() {
   try {
     const [res, syncRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/roast_weekly?select=*&order=week_start.desc&limit=200`,
+      fetch(`${SUPABASE_URL}/rest/v1/roast_weekly?select=*&order=week_start.desc&limit=1000`,
         { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }),
       fetch(`${SUPABASE_URL}/rest/v1/sync_log?select=*&id=eq.roast`,
         { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } })
