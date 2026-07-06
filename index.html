@@ -43,6 +43,10 @@ main{max-width:1400px;margin:0 auto;padding:2rem;display:none}
 .week-btn{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:.4rem .75rem;font-size:.8rem;font-weight:500;color:var(--indigo);cursor:pointer;transition:all .15s;font-family:inherit}
 .week-btn:hover{border-color:var(--arctic);color:var(--arctic)}
 .week-btn.active{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.wip-badge{display:inline-flex;align-items:center;gap:.35rem;background:rgba(224,194,58,.15);color:#a08a00;border:1px solid rgba(224,194,58,.4);border-radius:20px;padding:.25rem .7rem;font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.wip-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--tawny);animation:wippulse 1.6s ease-in-out infinite}
+@keyframes wippulse{0%,100%{opacity:1}50%{opacity:.35}}
+.wip-pill{display:inline-block;background:var(--tawny);color:var(--indigo);font-size:.55rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.1rem .35rem;border-radius:3px;margin-left:.35rem;vertical-align:middle}
 /* TREND CHARTS */
 .charts-row{display:grid;grid-template-columns:2fr 1fr;gap:1rem;margin-bottom:1.5rem}
 .chart-card{background:#fff;border-radius:12px;border:1.5px solid var(--border);padding:1.25rem 1.5rem}
@@ -114,7 +118,7 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 
 <main id="main">
   <div class="week-bar">
-    <span class="week-label">Viewing week of</span>
+    <span class="week-label">Viewing week of <span class="wip-badge" id="wip-badge" style="display:none;margin-left:.75rem">Week in progress</span></span>
     <div class="week-selector" id="week-selector"></div>
   </div>
 
@@ -220,6 +224,13 @@ function weekLabel(d) {
   return start.toLocaleDateString('en-AU',opts) + ' – ' + end.toLocaleDateString('en-AU',opts);
 }
 
+function isWeekInProgress(weekStart) {
+  // A week runs Tue 12:00 noon AEST -> following Tue 11:59am AEST.
+  // In progress = we haven't reached its closing cutover yet.
+  const closeMs = Date.parse(weekStart + 'T12:00:00+10:00') + 7*24*3600*1000;
+  return Date.now() < closeMs;
+}
+
 function getWeekData(week) {
   return allWeeklyOrders.filter(w => w.week_start === week);
 }
@@ -315,8 +326,9 @@ function drawLineSVG(svgEl, data, color='#46c4dc', showArea=true) {
 function renderWeekSelector() {
   const el = document.getElementById('week-selector');
   el.innerHTML = weeks.slice(0,8).map(w =>
-    `<button class="week-btn${w===currentWeek?' active':''}" onclick="selectWeek('${w}')">${weekLabel(w)}</button>`
+    `<button class="week-btn${w===currentWeek?' active':''}" onclick="selectWeek('${w}')">${weekLabel(w)}${isWeekInProgress(w) ? '<span class="wip-pill">Live</span>' : ''}</button>`
   ).join('');
+  document.getElementById('wip-badge').style.display = isWeekInProgress(currentWeek) ? 'inline-flex' : 'none';
 }
 
 function renderScorecard(data) {
@@ -515,6 +527,18 @@ async function init() {
 
     renderWeekSelector();
     renderAll();
+
+    // Drop the in-progress badge the moment the week closes (Tue noon AEST),
+    // even if the page has been left open.
+    let wasInProgress = isWeekInProgress(weeks[0]);
+    setInterval(() => {
+      const nowInProgress = isWeekInProgress(weeks[0]);
+      if (nowInProgress !== wasInProgress) {
+        wasInProgress = nowInProgress;
+        renderWeekSelector();
+        renderAll();
+      }
+    }, 60000);
   } catch(e) {
     document.getElementById('loading').innerHTML =
       `<p style="color:var(--coral)">Failed to load. Check Supabase connection.<br><small>${e.message}</small></p>`;

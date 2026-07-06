@@ -115,23 +115,24 @@ def extract_kg(name, qty):
 # ── Date range helpers ────────────────────────────────────────────────────────
 def ordering_week_range(weeks_ago=0):
     """
-    Most recently completed ordering week (or an earlier one via weeks_ago).
+    Returns an ordering week window.
     Week runs: Tuesday 12:00 noon AEST -> following Tuesday 11:59 AM AEST.
     Late orders: Tuesday 00:00 -> Tuesday 11:59 AM (before noon cutover).
-    Script runs Thursday — last completed week closed Tuesday 11:59 AM this week.
 
-    weeks_ago=0 is the most recently completed week; 1 is the week before, etc.
+    weeks_ago=0 is the CURRENT (open, possibly incomplete) ordering week —
+    synced so the dashboard shows live data mid-week. weeks_ago=1 is the
+    most recently completed week, re-synced each run for late orders.
     week_start returned is the DATE of the Tuesday, used as the DB key.
     """
     now_aest = datetime.now(AEST)
-    # Find the most recent Tuesday
+    # Find the most recent Tuesday noon cutover at or before now
     days_since_tuesday = (now_aest.weekday() - 1) % 7
     this_tuesday = (now_aest - timedelta(days=days_since_tuesday)).replace(
         hour=12, minute=0, second=0, microsecond=0)
-    # Last completed week: the Tuesday before that
-    last_tuesday = this_tuesday - timedelta(days=7) - timedelta(weeks=weeks_ago)
-    week_start_dt = last_tuesday  # Tue 12:00 noon AEST
-    week_end_dt = (last_tuesday + timedelta(days=7)).replace(
+    if now_aest < this_tuesday:
+        this_tuesday -= timedelta(days=7)
+    week_start_dt = this_tuesday - timedelta(weeks=weeks_ago)  # Tue 12:00 noon AEST
+    week_end_dt = (week_start_dt + timedelta(days=7)).replace(
         hour=11, minute=59, second=59, microsecond=0)  # Following Tue 11:59 AM
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     return (
@@ -384,9 +385,14 @@ def main():
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     print(f"\n[2/3] Syncing week(s)...")
-    # Oldest first so refresh_order_summary ends on complete data
-    for weeks_ago in range(backfill_offset + backfill_weeks,
-                           backfill_offset - 1, -1):
+    if backfill_weeks or backfill_offset:
+        # Oldest first so refresh_order_summary ends on complete data
+        week_offsets = range(backfill_offset + backfill_weeks,
+                             backfill_offset - 1, -1)
+    else:
+        # Normal run: previous week (late orders) + current open week
+        week_offsets = (1, 0)
+    for weeks_ago in week_offsets:
         sync_week(token, sb, weeks_ago)
 
     # Write sync timestamp so dashboard can show "last updated by workflow"
