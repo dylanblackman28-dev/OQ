@@ -210,6 +210,17 @@ const H = {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
     });
     return r.json();
+  },
+  // Supabase caps each response at 1000 rows — page through to get everything
+  getAll: async (path) => {
+    const out = [];
+    for (let offset = 0; ; offset += 1000) {
+      const page = await H.get(`${path}&limit=1000&offset=${offset}`);
+      if (!Array.isArray(page)) break;
+      out.push(...page);
+      if (page.length < 1000) break;
+    }
+    return out;
   }
 };
 
@@ -510,7 +521,7 @@ async function init() {
   try {
     const [partners, weeklyOrders, summaries, syncLog] = await Promise.all([
       H.get('partners?select=*&order=name&former_partner=eq.false'),
-      H.get('weekly_orders?select=*&limit=10000&order=week_start.desc'),
+      H.getAll('weekly_orders?select=*&order=week_start.desc'),
       H.get('order_summary?select=*'),
       H.get('sync_log?select=*&id=eq.wholesale')
     ]);
