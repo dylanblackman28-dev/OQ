@@ -34,31 +34,27 @@ def om_get(url, token):
     except:
         return {}
 
-def ordering_week_range():
+def ordering_week_range(weeks_ago=0):
     """
-    Returns the most recently COMPLETED ordering week.
+    Returns an ordering week window.
     Week runs: Tuesday 12:00 noon AEST -> following Tuesday 11:59 AM AEST.
     Late orders (Tue 00:00-11:59) are counted INTO the week that is closing,
     since fulfilment packs and ships them same-day.
 
-    Example running Tuesday 30 June 2026 (any time):
-      - This Tuesday noon = 30 June 12:00
-      - If now < this Tuesday noon -> still in last week's late window,
-        so the week closing is Tue 23 June 12:00 -> Tue 30 June 11:59
-      - If now >= this Tuesday noon -> that week just closed,
-        so the week closing is also Tue 23 June 12:00 -> Tue 30 June 11:59
-        (the new week, Tue 30 June 12:00 onwards, has not closed yet)
+    weeks_ago=0 is the CURRENT (open, possibly incomplete) ordering week —
+    synced so the tracker shows live data mid-week. weeks_ago=1 is the most
+    recently completed week, re-synced each run to pick up late orders.
     """
     now_aest = datetime.now(AEST)
     days_since_tuesday = (now_aest.weekday() - 1) % 7
     this_tuesday_noon = (now_aest - timedelta(days=days_since_tuesday)).replace(
         hour=12, minute=0, second=0, microsecond=0)
-    # If we haven't reached this Tuesday's noon cutover yet, the week that's
-    # closing is the one before it
+    # Before this Tuesday's noon cutover, the open week started last Tuesday
     if now_aest < this_tuesday_noon:
         this_tuesday_noon -= timedelta(days=7)
-    week_start = this_tuesday_noon - timedelta(days=7)   # Tue noon, 1 week before cutover
-    week_end = this_tuesday_noon.replace(hour=11, minute=59, second=59)  # cutover Tue 11:59am
+    week_start = this_tuesday_noon - timedelta(weeks=weeks_ago)
+    week_end = (week_start + timedelta(days=7)).replace(
+        hour=11, minute=59, second=59)  # cutover Tue 11:59am
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     return (
         week_start.astimezone(timezone.utc).strftime(fmt),
@@ -97,17 +93,10 @@ def extract_kg(name, qty):
 def is_venue_order(retailer_name):
     return any(v in (retailer_name or "").lower() for v in OQ_VENUES)
 
-def main():
-    print("=" * 55)
-    print(f"OQ Roast Sync — {datetime.now(AEST).strftime('%A %d %B %Y %I:%M %p AEST')}")
-    print("=" * 55)
-
-    print("\n[1/4] Authenticating...")
-    token = om_auth()
-    print("  OK")
-
-    start_utc, end_utc, week_start_date = ordering_week_range()
-    print(f"\n[2/4] Pulling orders: {week_start_date} → {week_start_date + timedelta(days=6)}")
+def sync_week(token, sb, weeks_ago):
+    start_utc, end_utc, week_start_date = ordering_week_range(weeks_ago)
+    label = "current (open)" if weeks_ago == 0 else "previous (late orders)"
+    print(f"\n[{label}] Pulling orders: {week_start_date} → {week_start_date + timedelta(days=6)}")
     print(f"  (UTC: {start_utc} → {end_utc})")
 
     all_orders = []
@@ -126,7 +115,7 @@ def main():
         time.sleep(0.2)
     print(f"  {len(all_orders)} orders pulled")
 
-    print(f"\n[3/4] Processing line items...")
+    print(f"  Processing line items...")
     totals = defaultdict(float)
     order_count = 0
     rising_sun_dates = []
@@ -158,8 +147,7 @@ def main():
     if rising_sun_dates:
         print(f"  Rising Sun orders on: {', '.join(rising_sun_dates)}")
 
-    print(f"\n[4/4] Writing to Supabase...")
-    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+    print(f"  Writing to Supabase...")
     sb.table("roast_weekly").upsert({
         "week_start": str(week_start_date),
         "village_blend_kg": round(totals.get("village_blend_kg", 0), 2),
@@ -176,6 +164,24 @@ def main():
         "updated_at":       datetime.now(timezone.utc).isoformat(),
     }, on_conflict="week_start").execute()
 
+    print(f"  Week {week_start_date} written ✓")
+
+
+def main():
+    print("=" * 55)
+    print(f"OQ Roast Sync — {datetime.now(AEST).strftime('%A %d %B %Y %I:%M %p AEST')}")
+    print("=" * 55)
+
+    print("\n[1/3] Authenticating...")
+    token = om_auth()
+    print("  OK")
+
+    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+    print("\n[2/3] Syncing previous week (late orders) + current open week...")
+    for weeks_ago in (1, 0):
+        sync_week(token, sb, weeks_ago)
+
     # Write sync timestamp so dashboard can show "last updated by workflow"
     sb.table("sync_log").upsert({
         "id": "roast",
@@ -183,7 +189,7 @@ def main():
         "synced_by": "github_actions",
     }, on_conflict="id").execute()
 
-    print(f"  Week {week_start_date} written ✓")
+    print("\n[3/3] Done ✓")
     print("=" * 55)
 
 if __name__ == "__main__":

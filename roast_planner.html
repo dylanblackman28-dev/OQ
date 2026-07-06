@@ -390,8 +390,8 @@ let historyData      = [];
 
 // ─── UTILITIES ────────────────────────────────────────────────────────────────
 function getCurrentWeekStart() {
-  // Mirrors ordering_week_range() in roast_sync.py — returns the week_start
-  // date of the most recently COMPLETED ordering week (week closes Tue noon AEST).
+  // Mirrors ordering_week_range(0) in roast_sync.py — returns the week_start
+  // of the CURRENT (open) ordering week (weeks run Tue noon AEST -> Tue 11:59am).
   const AEST_OFFSET_MS = 10 * 60 * 60 * 1000;
   const nowAEST = new Date(Date.now() + AEST_OFFSET_MS + new Date().getTimezoneOffset() * 60000);
 
@@ -401,13 +401,10 @@ function getCurrentWeekStart() {
   thisTueNoon.setDate(nowAEST.getDate() - daysSinceTue);
   thisTueNoon.setHours(12, 0, 0, 0);
 
-  // If we haven't reached Tuesday noon yet, the cutover is the previous Tuesday
+  // Before Tuesday noon, the open week still started last Tuesday
   if (nowAEST < thisTueNoon) thisTueNoon.setDate(thisTueNoon.getDate() - 7);
 
-  // week_start = one week before the cutover Tuesday
-  const weekStart = new Date(thisTueNoon);
-  weekStart.setDate(weekStart.getDate() - 7);
-  return weekStart.toISOString().slice(0, 10);
+  return thisTueNoon.toISOString().slice(0, 10);
 }
 
 function fmtWeekRange(weekStartStr) {
