@@ -1,0 +1,912 @@
+<!-- ============================================================
+  OLD QUARTER COFFEE — PRODUCT RECOMMENDATION QUIZ (self-contained embed)
+  Paste this entire block into a "Custom Liquid" section in the theme
+  editor, on whichever page should host the quiz.
+  Built from the /quiz folder of the OQ repo — edit there, rebuild with
+  scripts/build_quiz_embed.py, and re-paste to update.
+============================================================= -->
+<div id="oq-coffee-quiz"></div>
+<style>
+/* ============================================================================
+   OLD QUARTER COFFEE QUIZ — STYLES
+   Brand tokens are set as CSS variables by quiz.js from quiz-config.js.
+   Everything is scoped under .oqq to avoid fighting the theme's CSS.
+   ============================================================================ */
+
+.oqq {
+  --oqq-accent: #2c737f;
+  --oqq-accent-hover: #235c66;
+  --oqq-dark: #000000;
+  --oqq-brown: #8a4d36;
+  --oqq-cream: #fdfcf7;
+  --oqq-paper: #ffffff;
+  --oqq-sale: #ba2323;
+  --oqq-heading-font: 'Graduate', cursive;
+  --oqq-body-font: 'Nunito Sans', sans-serif;
+
+  font-family: var(--oqq-body-font);
+  color: #1c1c1c;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  box-sizing: border-box;
+}
+.oqq *, .oqq *::before, .oqq *::after { box-sizing: border-box; }
+.oqq img { max-width: 100%; display: block; }
+.oqq button { font-family: inherit; cursor: pointer; }
+
+/* ---- progress ---- */
+.oqq-progress { height: 5px; background: #ececec; border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+.oqq-progress-bar { height: 100%; background: var(--oqq-accent); border-radius: 3px; width: 0; transition: width .35s ease; }
+.oqq-step-label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #8b8b8b; margin-bottom: 28px; }
+
+/* ---- headings ---- */
+.oqq-title {
+  font-family: var(--oqq-heading-font);
+  font-weight: 400;
+  font-size: clamp(22px, 4vw, 32px);
+  line-height: 1.25;
+  text-align: center;
+  color: #14225c;
+  margin: 0 0 6px;
+}
+.oqq-subtitle { text-align: center; color: #6f6f6f; font-size: 15px; margin: 0 0 26px; }
+.oqq-intro-text { text-align: center; color: #4a4a4a; font-size: 17px; line-height: 1.6; max-width: 560px; margin: 0 auto 28px; }
+
+/* ---- choice buttons ---- */
+.oqq-choices { display: flex; flex-direction: column; gap: 12px; max-width: 520px; margin: 0 auto; }
+.oqq-choice {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 15px 20px;
+  background: #e9e9ef; border: 2px solid transparent; border-radius: 8px;
+  font-size: 16px; font-weight: 600; color: #1c1c1c; text-align: left;
+  transition: border-color .15s ease, background .15s ease, transform .1s ease;
+}
+.oqq-choice:hover { background: #dfe7e8; border-color: var(--oqq-accent); }
+.oqq-choice:active { transform: scale(.99); }
+.oqq-choice-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; border: 2px solid #c4c4c4; flex: 0 0 auto;
+}
+.oqq-choice:hover .oqq-choice-dot { border-color: var(--oqq-accent); }
+
+/* ---- primary buttons / nav ---- */
+.oqq-cta {
+  display: inline-block; padding: 14px 34px;
+  background: var(--oqq-accent); color: #fff; border: 0; border-radius: 6px;
+  font-size: 15px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+}
+.oqq-cta:hover { background: var(--oqq-accent-hover); }
+.oqq-center { text-align: center; }
+.oqq-nav { margin-top: 26px; text-align: center; }
+.oqq-back {
+  background: none; border: 0; color: #8b8b8b; font-size: 14px;
+  text-decoration: underline; padding: 8px 12px;
+}
+.oqq-back:hover { color: var(--oqq-dark); }
+
+/* ---- results ---- */
+.oqq-results-head { text-align: center; margin-bottom: 10px; }
+.oqq-results-intro { text-align: center; color: #4a4a4a; margin: 0 auto 6px; max-width: 620px; }
+.oqq-size-note {
+  background: var(--oqq-cream); border: 1px solid #efe9d8; border-radius: 8px;
+  padding: 14px 18px; font-size: 14.5px; line-height: 1.55; color: #4a4a4a;
+  max-width: 620px; margin: 18px auto 8px; text-align: center;
+}
+.oqq-fallback-note {
+  color: var(--oqq-brown); font-size: 14.5px; text-align: center;
+  max-width: 620px; margin: 10px auto 0;
+}
+.oqq-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 18px; margin-top: 26px;
+}
+.oqq-card {
+  background: var(--oqq-paper); border: 1px solid #ececec; border-radius: 10px;
+  overflow: hidden; display: flex; flex-direction: column;
+  transition: box-shadow .15s ease;
+}
+.oqq-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+.oqq-card-img { aspect-ratio: 1/1; background: var(--oqq-cream); }
+.oqq-card-img img { width: 100%; height: 100%; object-fit: cover; }
+.oqq-card-body { padding: 14px 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.oqq-card-title { font-size: 15.5px; font-weight: 700; line-height: 1.35; margin: 0; }
+.oqq-card-title a { color: inherit; text-decoration: none; }
+.oqq-card-title a:hover { color: var(--oqq-accent); }
+.oqq-badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.oqq-badge {
+  font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--oqq-cream); color: var(--oqq-brown);
+  border: 1px solid #eadfce; border-radius: 4px; padding: 3px 7px;
+}
+.oqq-badge--hot { background: var(--oqq-accent); color: #fff; border-color: var(--oqq-accent); }
+.oqq-price { font-size: 16px; font-weight: 800; color: #1c1c1c; }
+.oqq-sizes { display: flex; flex-wrap: wrap; gap: 6px; }
+.oqq-size-btn {
+  padding: 6px 12px; border-radius: 5px; border: 1.5px solid #d8d8d8;
+  background: #fff; font-size: 13px; font-weight: 600; color: #444; position: relative;
+}
+.oqq-size-btn[aria-pressed="true"] { border-color: var(--oqq-accent); background: var(--oqq-accent); color: #fff; }
+.oqq-size-btn:disabled { opacity: .38; cursor: not-allowed; text-decoration: line-through; }
+.oqq-size-rec {
+  display: block; font-size: 9.5px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--oqq-accent); margin-top: 1px;
+}
+.oqq-size-btn[aria-pressed="true"] .oqq-size-rec { color: #d8f0ee; }
+.oqq-atc {
+  margin-top: auto; width: 100%; padding: 12px 10px;
+  background: var(--oqq-dark); color: #fff; border: 0; border-radius: 6px;
+  font-size: 13.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  text-align: center; text-decoration: none; display: inline-block;
+}
+.oqq-atc:hover { background: #333; }
+.oqq-atc[data-state="added"] { background: var(--oqq-accent); }
+.oqq-atc:disabled { background: #bbb; cursor: not-allowed; }
+.oqq-card-links { text-align: center; }
+.oqq-card-links a { font-size: 13px; color: #6f6f6f; text-decoration: underline; }
+.oqq-card-links a:hover { color: var(--oqq-accent); }
+
+/* ---- states ---- */
+.oqq-loading, .oqq-error { text-align: center; padding: 48px 12px; color: #6f6f6f; font-size: 15px; }
+.oqq-spinner {
+  width: 34px; height: 34px; margin: 0 auto 14px; border-radius: 50%;
+  border: 3px solid #e3e3e3; border-top-color: var(--oqq-accent);
+  animation: oqq-spin .8s linear infinite;
+}
+@keyframes oqq-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 560px) {
+  .oqq { padding: 16px 10px 40px; }
+  .oqq-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .oqq-card-body { padding: 10px 10px 12px; }
+}
+</style>
+<script>
+/* ============================================================================
+   OLD QUARTER COFFEE — "DISCOVER THE BEST COFFEE FOR YOU" QUIZ CONFIG
+   ============================================================================
+   This file is the entire quiz definition. Edit it to change questions,
+   choices, matching rules, sizing logic, or copy — no code changes needed.
+
+   HOW MATCHING WORKS
+   ------------------
+   Products are fetched LIVE from the store (only active, published,
+   in-stock products are ever shown). Each product is matched against the
+   customer's answers using its Shopify tags:
+
+     match.anyTags     product must have AT LEAST ONE of these tags
+     match.excludeTags product must have NONE of these tags
+     (empty anyTags = the choice accepts any product, e.g. "Other")
+
+   Every question with matching rules acts as a filter, and the results are
+   the products that pass ALL of them. If the combination filters everything
+   out, the questions listed in `fallbackRelaxOrder` are relaxed one at a
+   time (a friendly note is shown to the customer when this happens).
+   ============================================================================ */
+
+window.OQ_QUIZ_CONFIG = {
+
+  /* ---- Where product data comes from -------------------------------------
+     "collections": storefront collection handles fetched via the store's own
+     /collections/<handle>/products.json endpoint (no API key needed — works
+     because the quiz runs on a page of the store itself). Only ACTIVE
+     products published to the Online Store are returned, so the quiz always
+     reflects the current lineup automatically. */
+  dataSource: {
+    collections: ['coffees'],       // "Specialty Coffee" = tag Coffee, minus gifts/subscriptions
+    // Optional dev/preview override: URL of a static products.json snapshot.
+    // Used automatically when the quiz is NOT running on the store domain.
+    staticDataUrl: null,
+    storeDomain: 'oldquartercoffee.com.au',
+  },
+
+  /* ---- Which products are quiz-eligible at all ----------------------------
+     A product must pass this to ever be recommended. Requiring a
+     "Best Enjoyed_" tag keeps bundles/gear/gift cards out automatically. */
+  eligibility: {
+    anyTags: ['Best Enjoyed_Milk', 'Best Enjoyed_Black', 'Best Enjoyed_Both Ways'],
+    // NOTE: don't exclude the "Gift" tag here — regular coffees carry it for
+    // the gift smart-collections. Gift cards, bundles and subscriptions are
+    // already excluded because they have no "Best Enjoyed_" tag and the
+    // source collection filters them out.
+    excludeTags: ['Gift Card Subscriptions'],
+    hideSoldOut: true,              // skip products with no purchasable variants
+  },
+
+  /* ---- Ranking ------------------------------------------------------------
+     Products with these tags float to the top of the results, in order. */
+  boostTags: ['__label:Best Seller', 'Limited Release'],
+
+  /* ---- The questions ------------------------------------------------------ */
+  questions: [
+    {
+      id: 'style',
+      title: 'Do you prefer milk, black or coffee both ways?',
+      type: 'filter',
+      choices: [
+        {
+          id: 'milk',
+          label: 'Milk',
+          match: {
+            anyTags: ['Best Enjoyed_Milk'],
+            // Filter roasts are black-coffee products — never with milk.
+            excludeTags: ['Roast Type_Filter', 'Filter'],
+          },
+        },
+        {
+          id: 'black',
+          label: 'Black',
+          match: { anyTags: ['Best Enjoyed_Black'], excludeTags: [] },
+        },
+        {
+          id: 'both',
+          label: 'Both Ways',
+          match: {
+            anyTags: ['Best Enjoyed_Both Ways'],
+            excludeTags: ['Roast Type_Filter', 'Filter'],
+          },
+        },
+      ],
+    },
+
+    {
+      id: 'brew',
+      title: 'How do you brew coffee at home?',
+      subtitle: 'Choose one primary method',
+      type: 'filter',
+      choices: [
+        // Espresso accepts either the espresso roast tag or the espresso brew
+        // tag — some coffees (e.g. named "(Espresso)") carry only the latter.
+        { id: 'espresso',  label: 'Espresso',   match: { anyTags: ['Roast Type_Espresso', 'Brew Method_Espresso'], excludeTags: [] } },
+        { id: 'aeropress', label: 'AeroPress',  match: { anyTags: ['Brew Method_Aeropress'],  excludeTags: [] } },
+        { id: 'plunger',   label: 'Plunger',    match: { anyTags: ['Brew Method_Plunger'],    excludeTags: [] } },
+        { id: 'pourover',  label: 'Pour Over',  match: { anyTags: ['Brew Method_Pour Over'],  excludeTags: [] } },
+        { id: 'stovetop',  label: 'Stovetop',   match: { anyTags: ['Brew Method_Stovetop'],   excludeTags: [] } },
+        { id: 'batchbrew', label: 'Batch Brew', match: { anyTags: ['Brew Method_Batch Brew'], excludeTags: [] } },
+        { id: 'coldbrew',  label: 'Cold Brew',  match: { anyTags: ['Brew Method_Cold Brew'],  excludeTags: [] } },
+        // "Other" = no brew filter; any coffee that passed Q1 qualifies.
+        { id: 'other',     label: 'Other',      match: { anyTags: [], excludeTags: [] } },
+      ],
+    },
+
+    {
+      id: 'cups',
+      title: 'How many coffees do you brew at home per day?',
+      type: 'size',
+      // cupsLow = the conservative (low) end of the range; used in the
+      // freshness formula so nobody is pushed into a bag too big to finish
+      // inside the freshness window.
+      choices: [
+        { id: 'c12', label: '1-2', cupsLow: 1 },
+        { id: 'c23', label: '2-3', cupsLow: 2 },
+        { id: 'c34', label: '3-4', cupsLow: 3 },
+        { id: 'c4p', label: '4+',  cupsLow: 4 },
+      ],
+    },
+  ],
+
+  // If a combination matches nothing, relax these question filters in order.
+  fallbackRelaxOrder: ['brew'],
+
+  /* ---- Bag size recommendation --------------------------------------------
+     Coffee is fresh food: rested ~7 days, best finished within ~3 weeks,
+     fading after ~4. The quiz recommends the LARGEST bag the customer will
+     finish inside the freshness window:
+
+       serves  = bag grams / gramsPerServe
+       days    = serves / cups per day (low end of their range)
+       recommend the biggest size where days <= freshnessWindowDays
+
+     With 17.5 g/serve and a 21-day window this reproduces:
+       1-2 cups -> 250g, 2-3 -> 500g, 3-4 -> 1kg, 4+ -> 1kg               */
+  sizing: {
+    gramsPerServe: 17.5,
+    freshnessWindowDays: 21,
+    optionNames: ['size'],          // product option names (lowercased) that hold the bag size
+    sizes: [
+      { label: '250g', grams: 250,  matches: ['250'] },
+      { label: '500g', grams: 500,  matches: ['500'] },
+      { label: '1kg',  grams: 1000, matches: ['1kg', '1 kg', '1000'] },
+    ],
+  },
+
+  /* ---- Tag-derived badges shown on result cards --------------------------- */
+  badges: [
+    { prefix: 'Origin_',     format: '{v}' },
+    { prefix: 'Processing_', format: '{v} Process' },
+    { prefix: 'Roast Type_', format: '{v} Roast' },
+  ],
+  extraBadgeTags: { 'Limited Release': 'Limited Release', '__label:Best Seller': 'Best Seller' },
+
+  /* ---- Copy ---------------------------------------------------------------- */
+  copy: {
+    introTitle: 'Discover the best coffee for you',
+    introText: 'Three quick questions and we’ll narrow our current roasts down to the ones made for how you actually drink coffee.',
+    introButton: 'Find my coffee',
+    resultsTitle: 'Your coffee matches',
+    resultsIntro: 'Fresh from our current lineup — every one of these suits how you brew and drink.',
+    sizeExplainer: 'You brew about {cupsLabel} cups a day, so we recommend the {size} bag — roughly {serves} brews, finished in about {days} days. That keeps every cup inside the ~3-week freshness window (coffee is fresh food!).',
+    fallbackNote: 'None of our current roasts are tagged for that exact combination, so here are your closest matches based on how you take your coffee.',
+    emptyNote: 'We couldn’t find a match in the current lineup — browse all our coffees instead.',
+    addToCart: 'Add to cart',
+    added: 'Added ✓',
+    viewProduct: 'View product',
+    viewCart: 'View cart',
+    recommendedSize: 'Recommended',
+    soldOut: 'Sold out',
+    startOver: 'Start over',
+    back: 'Back',
+    ofLabel: 'Question {n} of {total}',
+  },
+
+  /* ---- Brand (pulled from the live Old Quarter theme) ---------------------- */
+  brand: {
+    headingFont: "'Graduate', cursive",
+    bodyFont: "'Nunito Sans', sans-serif",
+    accent: '#2c737f',        // OQ teal (CTA)
+    accentHover: '#235c66',
+    dark: '#000000',
+    brown: '#8a4d36',         // section-title brown
+    cream: '#fdfcf7',
+    paper: '#ffffff',
+    sale: '#ba2323',
+    loadFonts: true,          // set false if the host page already loads these fonts
+  },
+};
+</script>
+<script>
+/* ============================================================================
+   OLD QUARTER COFFEE QUIZ — ENGINE
+   ----------------------------------------------------------------------------
+   Self-contained, dependency-free widget. Reads window.OQ_QUIZ_CONFIG
+   (quiz-config.js) and renders into <div id="oq-coffee-quiz"></div>.
+
+   Product data is fetched live from the store's own
+   /collections/<handle>/products.json endpoint, which only ever returns
+   ACTIVE products published to the Online Store — so recommendations always
+   reflect the current lineup with no syncing and no API keys.
+
+   You should not need to edit this file to change the quiz — edit
+   quiz-config.js instead.
+   ============================================================================ */
+(function () {
+  'use strict';
+
+  var MOUNT_ID = 'oq-coffee-quiz';
+
+  function ready(fn) {
+    if (document.readyState !== 'loading') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
+  }
+
+  /* ---------- tiny DOM helper ---------- */
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        if (k === 'text') node.textContent = attrs[k];
+        else if (k === 'html') node.innerHTML = attrs[k];
+        else if (k.indexOf('on') === 0 && typeof attrs[k] === 'function') node.addEventListener(k.slice(2), attrs[k]);
+        else if (attrs[k] !== null && attrs[k] !== undefined) node.setAttribute(k, attrs[k]);
+      });
+    }
+    (children || []).forEach(function (c) { if (c) node.appendChild(c); });
+    return node;
+  }
+
+  function fmt(template, vars) {
+    return template.replace(/\{(\w+)\}/g, function (_, k) {
+      return vars[k] !== undefined ? vars[k] : '{' + k + '}';
+    });
+  }
+
+  function track(event, data) {
+    try {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push(Object.assign({ event: 'oq_quiz_' + event }, data || {}));
+    } catch (e) { /* analytics must never break the quiz */ }
+  }
+
+  /* ==========================================================================
+     DATA LAYER
+     ========================================================================== */
+  function onStoreDomain(cfg) {
+    var host = window.location.hostname;
+    return host === cfg.dataSource.storeDomain ||
+      host === 'www.' + cfg.dataSource.storeDomain ||
+      /\.myshopify\.com$/.test(host);
+  }
+
+  function fetchJson(url) {
+    return fetch(url, { credentials: 'same-origin' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
+      return r.json();
+    });
+  }
+
+  function fetchCollection(handle) {
+    var all = [];
+    function page(n) {
+      return fetchJson('/collections/' + handle + '/products.json?limit=250&page=' + n)
+        .then(function (data) {
+          var items = (data && data.products) || [];
+          all = all.concat(items);
+          if (items.length === 250 && n < 5) return page(n + 1);
+          return all;
+        });
+    }
+    return page(1);
+  }
+
+  function loadRawProducts(cfg) {
+    if (window.OQ_QUIZ_DATA && window.OQ_QUIZ_DATA.products) {
+      return Promise.resolve(window.OQ_QUIZ_DATA.products);
+    }
+    if (onStoreDomain(cfg)) {
+      return Promise.all(cfg.dataSource.collections.map(fetchCollection))
+        .then(function (lists) { return [].concat.apply([], lists); });
+    }
+    if (cfg.dataSource.staticDataUrl) {
+      return fetchJson(cfg.dataSource.staticDataUrl).then(function (d) { return d.products || []; });
+    }
+    return Promise.reject(new Error(
+      'Not on ' + cfg.dataSource.storeDomain + ' and no staticDataUrl configured.'));
+  }
+
+  /* Normalize a /products.json product into what the quiz needs. */
+  function normalize(cfg, raw) {
+    var seen = {};
+    var out = [];
+    raw.forEach(function (p) {
+      if (!p || seen[p.id]) return;
+      seen[p.id] = true;
+      var sizeOptIdx = -1;
+      (p.options || []).forEach(function (o, i) {
+        var name = ((o && o.name) || '').toLowerCase();
+        var pos = (o && o.position) ? o.position - 1 : i;
+        if (cfg.sizing.optionNames.indexOf(name) !== -1) sizeOptIdx = pos;
+      });
+      var variants = (p.variants || []).map(function (v) {
+        return {
+          id: v.id,
+          title: v.title,
+          price: parseFloat(v.price),
+          available: v.available !== false,
+          sizeValue: sizeOptIdx >= 0 ? (v['option' + (sizeOptIdx + 1)] || '') : '',
+        };
+      });
+      out.push({
+        id: p.id,
+        title: p.title,
+        handle: p.handle,
+        tags: p.tags || [],
+        image: (p.images && p.images[0] && (p.images[0].src || p.images[0].url)) || null,
+        variants: variants,
+        anyAvailable: variants.some(function (v) { return v.available; }),
+      });
+    });
+    return out;
+  }
+
+  /* ==========================================================================
+     MATCHING
+     ========================================================================== */
+  function hasAny(tags, list) {
+    if (!list || !list.length) return true;
+    return list.some(function (t) { return tags.indexOf(t) !== -1; });
+  }
+  function hasNone(tags, list) {
+    if (!list || !list.length) return true;
+    return !list.some(function (t) { return tags.indexOf(t) !== -1; });
+  }
+  function passes(product, match) {
+    return hasAny(product.tags, match.anyTags) && hasNone(product.tags, match.excludeTags);
+  }
+
+  function eligible(cfg, products) {
+    return products.filter(function (p) {
+      if (cfg.eligibility.hideSoldOut && !p.anyAvailable) return false;
+      return passes(p, cfg.eligibility);
+    });
+  }
+
+  /* Returns { list, relaxedQuestions } applying all filter questions, then
+     relaxing per cfg.fallbackRelaxOrder if everything got filtered out. */
+  function computeResults(cfg, pool, answers) {
+    var filterQs = cfg.questions.filter(function (q) { return q.type === 'filter'; });
+    function run(skipIds) {
+      return pool.filter(function (p) {
+        return filterQs.every(function (q) {
+          if (skipIds.indexOf(q.id) !== -1) return true;
+          var choice = answers[q.id];
+          return !choice || passes(p, choice.match);
+        });
+      });
+    }
+    var skipped = [];
+    var list = run(skipped);
+    var order = cfg.fallbackRelaxOrder || [];
+    for (var i = 0; i < order.length && list.length === 0; i++) {
+      skipped.push(order[i]);
+      list = run(skipped);
+    }
+    list = rank(cfg, list);
+    return { list: list, relaxedQuestions: skipped.filter(function (id) {
+      return list.length > 0; // only report relaxation if it produced results
+    }) };
+  }
+
+  function rank(cfg, list) {
+    var boosts = cfg.boostTags || [];
+    function score(p) {
+      for (var i = 0; i < boosts.length; i++) {
+        if (p.tags.indexOf(boosts[i]) !== -1) return i;
+      }
+      return boosts.length;
+    }
+    return list.map(function (p, i) { return { p: p, s: score(p), i: i }; })
+      .sort(function (a, b) { return a.s - b.s || a.i - b.i; })
+      .map(function (x) { return x.p; });
+  }
+
+  /* ==========================================================================
+     SIZING
+     ========================================================================== */
+  function recommendSize(cfg, cupsLow) {
+    var s = cfg.sizing;
+    var best = null;
+    s.sizes.forEach(function (size) {
+      var serves = size.grams / s.gramsPerServe;
+      var days = serves / cupsLow;
+      if (days <= s.freshnessWindowDays && (!best || size.grams > best.size.grams)) {
+        best = { size: size, serves: Math.round(serves), days: Math.round(days) };
+      }
+    });
+    if (!best) {
+      var smallest = s.sizes[0];
+      s.sizes.forEach(function (z) { if (z.grams < smallest.grams) smallest = z; });
+      var sv = smallest.grams / s.gramsPerServe;
+      best = { size: smallest, serves: Math.round(sv), days: Math.round(sv / cupsLow) };
+    }
+    return best;
+  }
+
+  function sizeOfVariant(cfg, variant) {
+    var val = (variant.sizeValue || variant.title || '').toLowerCase().replace(/\s+/g, '');
+    var found = null;
+    cfg.sizing.sizes.forEach(function (size) {
+      size.matches.forEach(function (m) {
+        if (val.indexOf(m.toLowerCase().replace(/\s+/g, '')) !== -1) found = found || size;
+      });
+    });
+    return found;
+  }
+
+  /* Pick the variant of `product` to preselect for recommended size. */
+  function pickVariant(cfg, product, recSize) {
+    var bySize = product.variants.filter(function (v) {
+      var s = sizeOfVariant(cfg, v);
+      return s && recSize && s.label === recSize.label && v.available;
+    });
+    if (bySize.length) return bySize[0];
+    var avail = product.variants.filter(function (v) { return v.available; });
+    return avail[0] || product.variants[0] || null;
+  }
+
+  /* ==========================================================================
+     CART
+     ========================================================================== */
+  function addToCart(variantId) {
+    return fetch('/cart/add.js', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ items: [{ id: variantId, quantity: 1 }] }),
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (e) {
+        throw new Error((e && (e.description || e.message)) || 'Could not add to cart');
+      });
+      return r.json();
+    });
+  }
+
+  /* ==========================================================================
+     UI
+     ========================================================================== */
+  function App(mount, cfg) {
+    this.mount = mount;
+    this.cfg = cfg;
+    this.answers = {};
+    this.step = -1; // -1 = intro
+    this.products = null;
+    this.onStore = onStoreDomain(cfg);
+  }
+
+  App.prototype.productUrl = function (product, variant) {
+    var base = this.onStore ? '' : 'https://' + this.cfg.dataSource.storeDomain;
+    var url = base + '/products/' + product.handle;
+    if (variant) url += '?variant=' + variant.id;
+    return url;
+  };
+
+  App.prototype.start = function () {
+    var self = this;
+    this.renderLoading();
+    loadRawProducts(this.cfg)
+      .then(function (raw) {
+        self.products = eligible(self.cfg, normalize(self.cfg, raw));
+        self.step = -1;
+        self.render();
+      })
+      .catch(function (err) {
+        self.renderError(err);
+      });
+  };
+
+  App.prototype.shell = function (children) {
+    var root = el('div', { 'class': 'oqq' }, children);
+    this.mount.innerHTML = '';
+    this.mount.appendChild(root);
+    var b = this.cfg.brand || {};
+    var map = {
+      '--oqq-accent': b.accent, '--oqq-accent-hover': b.accentHover,
+      '--oqq-dark': b.dark, '--oqq-brown': b.brown, '--oqq-cream': b.cream,
+      '--oqq-paper': b.paper, '--oqq-sale': b.sale,
+      '--oqq-heading-font': b.headingFont, '--oqq-body-font': b.bodyFont,
+    };
+    Object.keys(map).forEach(function (k) { if (map[k]) root.style.setProperty(k, map[k]); });
+    if (this.mount.getBoundingClientRect().top < 0) this.mount.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  App.prototype.renderLoading = function () {
+    this.shell([el('div', { 'class': 'oqq-loading' }, [
+      el('div', { 'class': 'oqq-spinner' }),
+      el('div', { text: 'Brewing up your quiz…' }),
+    ])]);
+  };
+
+  App.prototype.renderError = function (err) {
+    var c = this.cfg.copy;
+    this.shell([el('div', { 'class': 'oqq-error' }, [
+      el('p', { text: 'Sorry — the quiz couldn’t load our current coffees.' }),
+      el('p', {}, [el('a', { href: '/collections/all-coffee', text: 'Browse all coffee instead' })]),
+    ])]);
+    if (window.console) console.error('[OQ quiz]', err);
+  };
+
+  App.prototype.progress = function () {
+    var total = this.cfg.questions.length;
+    var done = this.step < 0 ? 0 : this.step;
+    var pct = this.step === 'results' ? 100 : Math.round((done / total) * 100);
+    var label = this.step === 'results' || this.step < 0 ? null :
+      el('div', { 'class': 'oqq-step-label', text: fmt(this.cfg.copy.ofLabel, { n: this.step + 1, total: total }) });
+    return [
+      el('div', { 'class': 'oqq-progress', role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100 }, [
+        el('div', { 'class': 'oqq-progress-bar', style: 'width:' + pct + '%' }),
+      ]),
+      label,
+    ];
+  };
+
+  App.prototype.render = function () {
+    if (this.step === -1) return this.renderIntro();
+    if (this.step === 'results') return this.renderResults();
+    this.renderQuestion(this.cfg.questions[this.step]);
+  };
+
+  App.prototype.renderIntro = function () {
+    var self = this, c = this.cfg.copy;
+    this.shell([
+      el('h2', { 'class': 'oqq-title', text: c.introTitle }),
+      el('p', { 'class': 'oqq-intro-text', text: c.introText }),
+      el('div', { 'class': 'oqq-center' }, [
+        el('button', { 'class': 'oqq-cta', text: c.introButton, onclick: function () {
+          track('start');
+          self.step = 0; self.render();
+        } }),
+      ]),
+    ]);
+  };
+
+  App.prototype.renderQuestion = function (q) {
+    var self = this, c = this.cfg.copy;
+    var choices = el('div', { 'class': 'oqq-choices' }, q.choices.map(function (choice) {
+      return el('button', { 'class': 'oqq-choice', onclick: function () {
+        self.answers[q.id] = choice;
+        track('answer', { question: q.id, choice: choice.id });
+        var next = self.step + 1;
+        self.step = next >= self.cfg.questions.length ? 'results' : next;
+        self.render();
+      } }, [
+        el('span', { 'class': 'oqq-choice-dot', 'aria-hidden': 'true' }),
+        el('span', { text: choice.label }),
+      ]);
+    }));
+    this.shell([].concat(this.progress(), [
+      el('h2', { 'class': 'oqq-title', text: q.title }),
+      q.subtitle ? el('p', { 'class': 'oqq-subtitle', text: q.subtitle }) : null,
+      choices,
+      el('div', { 'class': 'oqq-nav' }, [
+        el('button', { 'class': 'oqq-back', text: this.step === 0 ? c.startOver : c.back, onclick: function () {
+          self.step = self.step === 0 ? -1 : self.step - 1;
+          self.render();
+        } }),
+      ]),
+    ]));
+  };
+
+  App.prototype.renderResults = function () {
+    var self = this, cfg = this.cfg, c = cfg.copy;
+    var res = computeResults(cfg, this.products, this.answers);
+    var cupsChoice = null;
+    cfg.questions.forEach(function (q) { if (q.type === 'size') cupsChoice = self.answers[q.id]; });
+    var rec = cupsChoice ? recommendSize(cfg, cupsChoice.cupsLow) : null;
+
+    track('results', { count: res.list.length, relaxed: res.relaxedQuestions.join(',') });
+
+    var head = [
+      el('h2', { 'class': 'oqq-title', text: c.resultsTitle }),
+      el('p', { 'class': 'oqq-results-intro', text: c.resultsIntro }),
+    ];
+    if (rec) {
+      head.push(el('div', { 'class': 'oqq-size-note', text: fmt(c.sizeExplainer, {
+        cupsLabel: cupsChoice.label, size: rec.size.label, serves: rec.serves, days: rec.days,
+      }) }));
+    }
+    if (res.relaxedQuestions.length && res.list.length) {
+      head.push(el('p', { 'class': 'oqq-fallback-note', text: c.fallbackNote }));
+    }
+
+    var body;
+    if (!res.list.length) {
+      body = el('div', { 'class': 'oqq-error' }, [
+        el('p', { text: c.emptyNote }),
+        el('p', {}, [el('a', { href: (this.onStore ? '' : 'https://' + cfg.dataSource.storeDomain) + '/collections/all-coffee', text: 'Browse all coffee' })]),
+      ]);
+    } else {
+      body = el('div', { 'class': 'oqq-grid' }, res.list.map(function (p) {
+        return self.card(p, rec);
+      }));
+    }
+
+    this.shell([].concat(this.progress(), head, [body,
+      el('div', { 'class': 'oqq-nav' }, [
+        el('button', { 'class': 'oqq-back', text: c.startOver, onclick: function () {
+          self.answers = {}; self.step = -1; self.render();
+        } }),
+      ]),
+    ]));
+  };
+
+  App.prototype.badgesFor = function (product) {
+    var cfg = this.cfg, out = [];
+    /* highlight badges (Best Seller, Limited Release) first so they never
+       get crowded out by origin/process badges */
+    Object.keys(cfg.extraBadgeTags || {}).forEach(function (t) {
+      if (product.tags.indexOf(t) !== -1) out.push({ text: cfg.extraBadgeTags[t], hot: true });
+    });
+    (cfg.badges || []).forEach(function (b) {
+      product.tags.forEach(function (t) {
+        if (t.indexOf(b.prefix) === 0) out.push({ text: fmt(b.format, { v: t.slice(b.prefix.length) }), hot: false });
+      });
+    });
+    return out.slice(0, 4);
+  };
+
+  App.prototype.card = function (product, rec) {
+    var self = this, cfg = this.cfg, c = cfg.copy;
+    var selected = pickVariant(cfg, product, rec && rec.size);
+
+    var priceEl = el('div', { 'class': 'oqq-price', text: selected ? '$' + selected.price.toFixed(2) : '' });
+    var atc;
+
+    /* size selector: one button per configured size that this product has */
+    var sizeBtns = [];
+    cfg.sizing.sizes.forEach(function (size) {
+      /* first available variant of this size — must mirror pickVariant() so
+         the preselected button matches the preselected variant */
+      var variant = null;
+      product.variants.forEach(function (v) {
+        var s = sizeOfVariant(cfg, v);
+        if (s && s.label === size.label) {
+          if (!variant || (!variant.available && v.available)) variant = v;
+        }
+      });
+      if (!variant) return;
+      var isRec = rec && rec.size.label === size.label;
+      var btn = el('button', {
+        'class': 'oqq-size-btn',
+        'aria-pressed': selected && variant.id === selected.id ? 'true' : 'false',
+        disabled: variant.available ? null : 'disabled',
+        onclick: function () {
+          selected = variant;
+          sizeBtns.forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+          btn.setAttribute('aria-pressed', 'true');
+          priceEl.textContent = '$' + variant.price.toFixed(2);
+          if (atc) syncAtc();
+        },
+      }, [
+        el('span', { text: size.label }),
+        isRec ? el('span', { 'class': 'oqq-size-rec', text: c.recommendedSize }) : null,
+      ]);
+      sizeBtns.push(btn);
+    });
+
+    function syncAtc() {
+      atc.textContent = selected && selected.available ? c.addToCart : c.soldOut;
+      if (selected && selected.available) atc.removeAttribute('disabled');
+      else atc.setAttribute('disabled', 'disabled');
+      atc.removeAttribute('data-state');
+    }
+
+    if (this.onStore) {
+      atc = el('button', { 'class': 'oqq-atc', onclick: function () {
+        if (!selected) return;
+        atc.textContent = '…';
+        addToCart(selected.id).then(function () {
+          atc.textContent = c.added;
+          atc.setAttribute('data-state', 'added');
+          track('add_to_cart', { product: product.handle, variant: selected.id });
+          setTimeout(syncAtc, 2500);
+        }).catch(function (err) {
+          atc.textContent = c.addToCart;
+          alert(err.message || 'Could not add to cart');
+        });
+      } });
+    } else {
+      atc = el('a', { 'class': 'oqq-atc', target: '_top', href: this.productUrl(product, selected) });
+    }
+    syncAtc();
+
+    var badges = this.badgesFor(product).map(function (b) {
+      return el('span', { 'class': 'oqq-badge' + (b.hot ? ' oqq-badge--hot' : ''), text: b.text });
+    });
+
+    return el('div', { 'class': 'oqq-card' }, [
+      el('a', { 'class': 'oqq-card-img', href: this.productUrl(product, selected), target: '_top' }, [
+        product.image ? el('img', { src: product.image, alt: product.title, loading: 'lazy' }) : null,
+      ]),
+      el('div', { 'class': 'oqq-card-body' }, [
+        badges.length ? el('div', { 'class': 'oqq-badges' }, badges) : null,
+        el('h3', { 'class': 'oqq-card-title' }, [
+          el('a', { href: this.productUrl(product, selected), target: '_top', text: product.title }),
+        ]),
+        sizeBtns.length ? el('div', { 'class': 'oqq-sizes' }, sizeBtns) : null,
+        priceEl,
+        atc,
+        el('div', { 'class': 'oqq-card-links' }, [
+          el('a', { href: this.productUrl(product, selected), target: '_top', text: c.viewProduct }),
+        ]),
+      ]),
+    ]);
+  };
+
+  /* ==========================================================================
+     BOOT
+     ========================================================================== */
+  function loadFonts(cfg) {
+    if (!cfg.brand || !cfg.brand.loadFonts) return;
+    var have = false;
+    document.querySelectorAll('link[href*="fonts.googleapis"]').forEach(function (l) {
+      if (/Graduate/.test(l.href)) have = true;
+    });
+    if (have) return;
+    var link = el('link', {
+      rel: 'stylesheet',
+      href: 'https://fonts.googleapis.com/css2?family=Graduate&family=Nunito+Sans:wght@400;600;700;800&display=swap',
+    });
+    document.head.appendChild(link);
+  }
+
+  ready(function () {
+    var mount = document.getElementById(MOUNT_ID);
+    var cfg = window.OQ_QUIZ_CONFIG;
+    if (!mount || !cfg) {
+      if (window.console && !mount) console.warn('[OQ quiz] mount #' + MOUNT_ID + ' not found');
+      return;
+    }
+    loadFonts(cfg);
+    new App(mount, cfg).start();
+  });
+})();
+</script>

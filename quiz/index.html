@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Old Quarter Coffee — Find Your Coffee (preview)</title>
+  <!--
+    Standalone preview page for the quiz widget.
+    On the live store the widget fetches products from the store itself;
+    off-store (like this page) it needs a static snapshot: either set
+    dataSource.staticDataUrl in quiz-config.js, or serve a snapshot and pass
+    it via ?data=<url>, e.g. ?data=./snapshot.json
+  -->
+  <link rel="stylesheet" href="quiz.css">
+  <style>body { margin: 0; background: #fff; }</style>
+</head>
+<body>
+  <div id="oq-coffee-quiz"></div>
+  <script src="quiz-config.js"></script>
+  <script>
+    (function () {
+      var data = new URLSearchParams(window.location.search).get('data');
+      if (data) window.OQ_QUIZ_CONFIG.dataSource.staticDataUrl = data;
+    })();
+  </script>
+  <script src="quiz.js"></script>
+</body>
+</html>
