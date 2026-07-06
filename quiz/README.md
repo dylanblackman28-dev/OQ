@@ -30,15 +30,26 @@ endpoint only returns **active products published to the Online Store**, so:
 
 No API keys, no tokens, no syncing, nothing to maintain.
 
-## Installing on the store
+## Where it's installed
 
-1. Open the built embed file: `quiz/dist/oq-quiz-embed.html` and copy its
-   **entire contents**.
-2. In Shopify admin: **Online Store → Pages → Add page** (e.g. "Find Your
-   Coffee"), then in the theme editor add a **Custom Liquid** section to that
-   page and paste the block in. (An HTML block in the rich-text editor works
-   too, but Custom Liquid is cleaner.)
-3. Save. Done — the quiz is live and needs no further attention.
+**Live page:** https://oldquartercoffee.com.au/pages/find-your-coffee
+("Discover The Best Coffee For You", created via the Admin API.)
+
+The page body is a small stub that loads `quiz.css`, `quiz-config.js` and
+`quiz.js` from this repo via jsDelivr, **pinned to a specific commit SHA**
+(immutable, permanently cached). To ship a quiz change:
+
+1. Edit `quiz/quiz-config.js` (or the other files), commit and push.
+2. Update the three `@<sha>` references in the page body (Shopify admin →
+   Online Store → Pages → "Discover The Best Coffee For You" → edit HTML) to
+   the new commit SHA — or ask Claude to do it via the API.
+
+### Alternative: fully self-contained embed (no CDN)
+
+`quiz/dist/oq-quiz-embed.html` bundles everything into one block. Paste its
+entire contents into a Custom Liquid section (or the page body) instead of
+the script stub — no external hosting involved. Rebuild it after config
+edits with `python3 scripts/build_quiz_embed.py`.
 
 ## Editing the quiz
 
