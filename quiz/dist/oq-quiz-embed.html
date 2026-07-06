@@ -64,6 +64,12 @@
 }
 .oqq-choice:hover { background: #dfe7e8; border-color: var(--oqq-accent); }
 .oqq-choice:active { transform: scale(.99); }
+.oqq-choice[aria-pressed="true"] { background: #dfe7e8; border-color: var(--oqq-accent); }
+.oqq-choice[aria-pressed="true"] .oqq-choice-dot {
+  border-color: var(--oqq-accent);
+  background: var(--oqq-accent);
+  box-shadow: inset 0 0 0 3px #fff;
+}
 .oqq-choice-dot {
   width: 18px; height: 18px; border-radius: 50%;
   background: #fff; border: 2px solid #c4c4c4; flex: 0 0 auto;
@@ -77,6 +83,7 @@
   font-size: 15px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
 }
 .oqq-cta:hover { background: var(--oqq-accent-hover); }
+.oqq-cta:disabled { background: #c2c2c2; cursor: not-allowed; }
 .oqq-center { text-align: center; }
 .oqq-nav { margin-top: 26px; text-align: center; }
 .oqq-back {
@@ -120,6 +127,12 @@
   border: 1px solid #eadfce; border-radius: 4px; padding: 3px 7px;
 }
 .oqq-badge--hot { background: var(--oqq-accent); color: #fff; border-color: var(--oqq-accent); }
+.oqq-method-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.oqq-method-chip {
+  font-size: 11.5px; font-weight: 700; color: var(--oqq-accent);
+  border: 1px solid var(--oqq-accent); border-radius: 999px; padding: 3px 9px;
+  background: rgba(44, 115, 127, .06);
+}
 .oqq-price { font-size: 16px; font-weight: 800; color: #1c1c1c; }
 .oqq-sizes { display: flex; flex-wrap: wrap; gap: 6px; }
 .oqq-size-btn {
@@ -252,17 +265,24 @@ window.OQ_QUIZ_CONFIG = {
     {
       id: 'brew',
       title: 'How do you brew coffee at home?',
-      subtitle: 'Choose one primary method',
+      subtitle: 'Select every way you brew — we’ll match coffees to each',
       type: 'filter',
+      // Multi-select: a product matches if it suits ANY selected method, and
+      // result cards show which of the customer's methods each coffee suits.
+      // Coffees that suit more of their methods rank higher.
+      multiSelect: true,
       choices: [
         // Espresso accepts either the espresso roast tag or the espresso brew
         // tag — some coffees (e.g. named "(Espresso)") carry only the latter.
         { id: 'espresso',  label: 'Espresso',   match: { anyTags: ['Roast Type_Espresso', 'Brew Method_Espresso'], excludeTags: [] } },
         { id: 'aeropress', label: 'AeroPress',  match: { anyTags: ['Brew Method_Aeropress'],  excludeTags: [] } },
         { id: 'plunger',   label: 'Plunger',    match: { anyTags: ['Brew Method_Plunger'],    excludeTags: [] } },
-        { id: 'pourover',  label: 'Pour Over',  match: { anyTags: ['Brew Method_Pour Over'],  excludeTags: [] } },
+        // Pour over + batch brew are filter-roast methods — OQ only batch
+        // brews filter coffee, and filter is always served black. So these
+        // options are hidden entirely for milk drinkers.
+        { id: 'pourover',  label: 'Pour Over',  hideWhen: { style: ['milk'] }, match: { anyTags: ['Brew Method_Pour Over'],  excludeTags: [] } },
         { id: 'stovetop',  label: 'Stovetop',   match: { anyTags: ['Brew Method_Stovetop'],   excludeTags: [] } },
-        { id: 'batchbrew', label: 'Batch Brew', match: { anyTags: ['Brew Method_Batch Brew'], excludeTags: [] } },
+        { id: 'batchbrew', label: 'Batch Brew', hideWhen: { style: ['milk'] }, match: { anyTags: ['Brew Method_Batch Brew'], excludeTags: [] } },
         { id: 'coldbrew',  label: 'Cold Brew',  match: { anyTags: ['Brew Method_Cold Brew'],  excludeTags: [] } },
         // "Other" = no brew filter; any coffee that passed Q1 qualifies.
         { id: 'other',     label: 'Other',      match: { anyTags: [], excludeTags: [] } },
@@ -325,7 +345,7 @@ window.OQ_QUIZ_CONFIG = {
     introButton: 'Find my coffee',
     resultsTitle: 'Your coffee matches',
     resultsIntro: 'Fresh from our current lineup — every one of these suits how you brew and drink.',
-    sizeExplainer: 'You brew about {cupsLabel} cups a day, so we recommend the {size} bag — roughly {serves} brews, finished in about {days} days. That keeps every cup inside the ~3-week freshness window (coffee is fresh food!).',
+    sizeExplainer: 'Based on {cupsLabel} coffees a day, we recommend the {size} bag — you’ll finish it while it’s at its freshest.',
     fallbackNote: 'None of our current roasts are tagged for that exact combination, so here are your closest matches based on how you take your coffee.',
     emptyNote: 'We couldn’t find a match in the current lineup — browse all our coffees instead.',
     addToCart: 'Add to cart',
@@ -336,6 +356,8 @@ window.OQ_QUIZ_CONFIG = {
     soldOut: 'Sold out',
     startOver: 'Start over',
     back: 'Back',
+    continueLabel: 'Continue',
+    greatFor: 'Great for {method}',
     ofLabel: 'Question {n} of {total}',
   },
 
@@ -510,6 +532,27 @@ window.OQ_QUIZ_CONFIG = {
     });
   }
 
+  /* An answer is a single choice or (for multiSelect questions) an array of
+     choices. A product passes a question if it passes ANY selected choice. */
+  function asChoices(answer) {
+    if (!answer) return [];
+    return Array.isArray(answer) ? answer : [answer];
+  }
+  function passesQuestion(product, answer) {
+    var choices = asChoices(answer);
+    if (!choices.length) return true;
+    return choices.some(function (c) { return passes(product, c.match); });
+  }
+
+  /* Which of the customer's selected choices does this product suit?
+     (Choices with no anyTags — e.g. "Other" — match everything, so they are
+     not interesting to report or count.) */
+  function matchedChoices(product, answer) {
+    return asChoices(answer).filter(function (c) {
+      return c.match && c.match.anyTags && c.match.anyTags.length && passes(product, c.match);
+    });
+  }
+
   /* Returns { list, relaxedQuestions } applying all filter questions, then
      relaxing per cfg.fallbackRelaxOrder if everything got filtered out. */
   function computeResults(cfg, pool, answers) {
@@ -518,8 +561,7 @@ window.OQ_QUIZ_CONFIG = {
       return pool.filter(function (p) {
         return filterQs.every(function (q) {
           if (skipIds.indexOf(q.id) !== -1) return true;
-          var choice = answers[q.id];
-          return !choice || passes(p, choice.match);
+          return passesQuestion(p, answers[q.id]);
         });
       });
     }
@@ -530,22 +572,30 @@ window.OQ_QUIZ_CONFIG = {
       skipped.push(order[i]);
       list = run(skipped);
     }
-    list = rank(cfg, list);
+    list = rank(cfg, list, answers);
     return { list: list, relaxedQuestions: skipped.filter(function (id) {
       return list.length > 0; // only report relaxation if it produced results
     }) };
   }
 
-  function rank(cfg, list) {
+  /* Rank: suits more of the customer's selected methods first, then boost
+     tags (best sellers etc.), then original collection order. */
+  function rank(cfg, list, answers) {
     var boosts = cfg.boostTags || [];
-    function score(p) {
+    var multiQs = cfg.questions.filter(function (q) { return q.type === 'filter' && q.multiSelect; });
+    function boostScore(p) {
       for (var i = 0; i < boosts.length; i++) {
         if (p.tags.indexOf(boosts[i]) !== -1) return i;
       }
       return boosts.length;
     }
-    return list.map(function (p, i) { return { p: p, s: score(p), i: i }; })
-      .sort(function (a, b) { return a.s - b.s || a.i - b.i; })
+    function methodScore(p) {
+      var n = 0;
+      multiQs.forEach(function (q) { n += matchedChoices(p, answers[q.id]).length; });
+      return -n; // more matches = earlier
+    }
+    return list.map(function (p, i) { return { p: p, m: methodScore(p), s: boostScore(p), i: i }; })
+      .sort(function (a, b) { return a.m - b.m || a.s - b.s || a.i - b.i; })
       .map(function (x) { return x.p; });
   }
 
@@ -708,30 +758,76 @@ window.OQ_QUIZ_CONFIG = {
     ]);
   };
 
+  /* Choices can be hidden based on earlier answers via
+     choice.hideWhen = { <questionId>: [<choiceId>, ...] }  */
+  App.prototype.visibleChoices = function (q) {
+    var self = this;
+    return q.choices.filter(function (choice) {
+      var hw = choice.hideWhen;
+      if (!hw) return true;
+      return !Object.keys(hw).some(function (qid) {
+        var picked = asChoices(self.answers[qid]).map(function (c) { return c.id; });
+        return hw[qid].some(function (id) { return picked.indexOf(id) !== -1; });
+      });
+    });
+  };
+
+  App.prototype.advance = function () {
+    var next = this.step + 1;
+    this.step = next >= this.cfg.questions.length ? 'results' : next;
+    this.render();
+  };
+
   App.prototype.renderQuestion = function (q) {
     var self = this, c = this.cfg.copy;
-    var choices = el('div', { 'class': 'oqq-choices' }, q.choices.map(function (choice) {
-      return el('button', { 'class': 'oqq-choice', onclick: function () {
-        self.answers[q.id] = choice;
-        track('answer', { question: q.id, choice: choice.id });
-        var next = self.step + 1;
-        self.step = next >= self.cfg.questions.length ? 'results' : next;
-        self.render();
+    var visible = this.visibleChoices(q);
+    var selected = asChoices(this.answers[q.id]).filter(function (ch) {
+      return visible.indexOf(ch) !== -1; // drop selections hidden by a changed earlier answer
+    });
+    var continueBtn = null;
+
+    var choices = el('div', { 'class': 'oqq-choices' }, visible.map(function (choice) {
+      var isOn = selected.indexOf(choice) !== -1;
+      var btn = el('button', { 'class': 'oqq-choice', 'aria-pressed': q.multiSelect ? String(isOn) : null, onclick: function () {
+        if (!q.multiSelect) {
+          self.answers[q.id] = choice;
+          track('answer', { question: q.id, choice: choice.id });
+          self.advance();
+          return;
+        }
+        var idx = selected.indexOf(choice);
+        if (idx === -1) selected.push(choice); else selected.splice(idx, 1);
+        btn.setAttribute('aria-pressed', String(idx === -1));
+        self.answers[q.id] = selected.slice();
+        if (continueBtn) continueBtn.disabled = selected.length === 0;
       } }, [
         el('span', { 'class': 'oqq-choice-dot', 'aria-hidden': 'true' }),
         el('span', { text: choice.label }),
       ]);
+      return btn;
     }));
+
+    var nav = [
+      el('button', { 'class': 'oqq-back', text: this.step === 0 ? c.startOver : c.back, onclick: function () {
+        self.step = self.step === 0 ? -1 : self.step - 1;
+        self.render();
+      } }),
+    ];
+    if (q.multiSelect) {
+      continueBtn = el('button', { 'class': 'oqq-cta', text: c.continueLabel, onclick: function () {
+        track('answer', { question: q.id, choice: selected.map(function (ch) { return ch.id; }).join('+') });
+        self.answers[q.id] = selected.slice();
+        self.advance();
+      } });
+      continueBtn.disabled = selected.length === 0;
+      nav.unshift(el('div', { 'class': 'oqq-center', style: 'margin-bottom:10px' }, [continueBtn]));
+    }
+
     this.shell([].concat(this.progress(), [
       el('h2', { 'class': 'oqq-title', text: q.title }),
       q.subtitle ? el('p', { 'class': 'oqq-subtitle', text: q.subtitle }) : null,
       choices,
-      el('div', { 'class': 'oqq-nav' }, [
-        el('button', { 'class': 'oqq-back', text: this.step === 0 ? c.startOver : c.back, onclick: function () {
-          self.step = self.step === 0 ? -1 : self.step - 1;
-          self.render();
-        } }),
-      ]),
+      el('div', { 'class': 'oqq-nav' }, nav),
     ]));
   };
 
@@ -862,6 +958,18 @@ window.OQ_QUIZ_CONFIG = {
       return el('span', { 'class': 'oqq-badge' + (b.hot ? ' oqq-badge--hot' : ''), text: b.text });
     });
 
+    /* when the customer picked multiple brew methods, show which of THEIR
+       methods this coffee suits */
+    var methodChips = [];
+    cfg.questions.forEach(function (q) {
+      if (q.type !== 'filter' || !q.multiSelect) return;
+      var answer = self.answers[q.id];
+      if (asChoices(answer).length < 2) return;
+      matchedChoices(product, answer).forEach(function (ch) {
+        methodChips.push(el('span', { 'class': 'oqq-method-chip', text: '✓ ' + ch.label }));
+      });
+    });
+
     return el('div', { 'class': 'oqq-card' }, [
       el('a', { 'class': 'oqq-card-img', href: this.productUrl(product, selected), target: '_top' }, [
         product.image ? el('img', { src: product.image, alt: product.title, loading: 'lazy' }) : null,
@@ -871,6 +979,7 @@ window.OQ_QUIZ_CONFIG = {
         el('h3', { 'class': 'oqq-card-title' }, [
           el('a', { href: this.productUrl(product, selected), target: '_top', text: product.title }),
         ]),
+        methodChips.length ? el('div', { 'class': 'oqq-method-chips' }, methodChips) : null,
         sizeBtns.length ? el('div', { 'class': 'oqq-sizes' }, sizeBtns) : null,
         priceEl,
         atc,

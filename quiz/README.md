@@ -7,9 +7,14 @@ The quiz asks the same three questions as the original:
 
 1. **Do you prefer milk, black or coffee both ways?** → filters by
    `Best Enjoyed_*` tags (filter roasts are excluded for Milk / Both Ways —
-   filter coffee is always served black)
-2. **How do you brew coffee at home?** → filters by `Brew Method_*` /
-   `Roast Type_*` tags ("Other" matches everything)
+   filter coffee is always served black). Choosing **Milk** also hides the
+   Pour Over and Batch Brew options in question 2, since those are
+   filter-roast methods.
+2. **How do you brew coffee at home?** → **multi-select**: customers pick
+   every method they use. A coffee matches if it suits any of them, coffees
+   suiting more of their methods rank first, and each result card shows
+   "✓ AeroPress"-style chips for the methods it matches (when more than one
+   was selected). "Other" matches everything.
 3. **How many coffees do you brew at home per day?** → recommends a bag size
    using the freshness formula (see below)
 
@@ -72,8 +77,9 @@ days   = serves / cups per day
 recommend the biggest size where days <= 21
 ```
 
-Which reproduces: 1–2 cups → 250g · 2–3 → 500g · 3–4 → 1kg · 4+ → 1kg,
-and the results page explains the "why" to the customer in plain English.
+Which reproduces: 1–2 cups → 250g · 2–3 → 500g · 3–4 → 1kg · 4+ → 1kg.
+The results page states the recommendation simply ("Based on 2-3 coffees a
+day, we recommend the 500g bag…") without surfacing the maths.
 
 ## How matching works (mirrors the old app's Link Collections)
 
@@ -84,11 +90,17 @@ and the results page explains the "why" to the customer in plain English.
 | Style | Both Ways | `Best Enjoyed_Both Ways` | `Roast Type_Filter`, `Filter` |
 | Brew | Espresso | `Roast Type_Espresso` **or** `Brew Method_Espresso` | — |
 | Brew | AeroPress…Cold Brew | matching `Brew Method_*` tag | — |
+| Brew | Pour Over / Batch Brew | matching `Brew Method_*` tag | hidden when Q1 = Milk |
 | Brew | Other | any coffee | — |
 
-Results are the intersection of the style + brew filters. If a combination
-matches nothing in the current lineup (e.g. Milk + Batch Brew), the brew
-filter is relaxed and a friendly note is shown instead of an empty page.
+Results are the intersection of the style filter with the union of the
+selected brew methods. If a combination matches nothing in the current
+lineup, the brew filter is relaxed and a friendly note is shown instead of
+an empty page — the style filter (and its filter-roast exclusion) is never
+relaxed, so a Milk/Both Ways customer can never be shown a filter roast.
+
+Hiding a choice based on an earlier answer is config-driven:
+`hideWhen: { style: ['milk'] }` on any choice.
 
 Products must carry a `Best Enjoyed_*` tag to be quiz-eligible at all — this
 is what keeps bundles, gift cards, gear and subscriptions out. **When adding a

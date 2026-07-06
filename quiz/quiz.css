@@ -55,6 +55,12 @@
 }
 .oqq-choice:hover { background: #dfe7e8; border-color: var(--oqq-accent); }
 .oqq-choice:active { transform: scale(.99); }
+.oqq-choice[aria-pressed="true"] { background: #dfe7e8; border-color: var(--oqq-accent); }
+.oqq-choice[aria-pressed="true"] .oqq-choice-dot {
+  border-color: var(--oqq-accent);
+  background: var(--oqq-accent);
+  box-shadow: inset 0 0 0 3px #fff;
+}
 .oqq-choice-dot {
   width: 18px; height: 18px; border-radius: 50%;
   background: #fff; border: 2px solid #c4c4c4; flex: 0 0 auto;
@@ -68,6 +74,7 @@
   font-size: 15px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
 }
 .oqq-cta:hover { background: var(--oqq-accent-hover); }
+.oqq-cta:disabled { background: #c2c2c2; cursor: not-allowed; }
 .oqq-center { text-align: center; }
 .oqq-nav { margin-top: 26px; text-align: center; }
 .oqq-back {
@@ -111,6 +118,12 @@
   border: 1px solid #eadfce; border-radius: 4px; padding: 3px 7px;
 }
 .oqq-badge--hot { background: var(--oqq-accent); color: #fff; border-color: var(--oqq-accent); }
+.oqq-method-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.oqq-method-chip {
+  font-size: 11.5px; font-weight: 700; color: var(--oqq-accent);
+  border: 1px solid var(--oqq-accent); border-radius: 999px; padding: 3px 9px;
+  background: rgba(44, 115, 127, .06);
+}
 .oqq-price { font-size: 16px; font-weight: 800; color: #1c1c1c; }
 .oqq-sizes { display: flex; flex-wrap: wrap; gap: 6px; }
 .oqq-size-btn {

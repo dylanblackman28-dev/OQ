@@ -88,17 +88,24 @@ window.OQ_QUIZ_CONFIG = {
     {
       id: 'brew',
       title: 'How do you brew coffee at home?',
-      subtitle: 'Choose one primary method',
+      subtitle: 'Select every way you brew — we’ll match coffees to each',
       type: 'filter',
+      // Multi-select: a product matches if it suits ANY selected method, and
+      // result cards show which of the customer's methods each coffee suits.
+      // Coffees that suit more of their methods rank higher.
+      multiSelect: true,
       choices: [
         // Espresso accepts either the espresso roast tag or the espresso brew
         // tag — some coffees (e.g. named "(Espresso)") carry only the latter.
         { id: 'espresso',  label: 'Espresso',   match: { anyTags: ['Roast Type_Espresso', 'Brew Method_Espresso'], excludeTags: [] } },
         { id: 'aeropress', label: 'AeroPress',  match: { anyTags: ['Brew Method_Aeropress'],  excludeTags: [] } },
         { id: 'plunger',   label: 'Plunger',    match: { anyTags: ['Brew Method_Plunger'],    excludeTags: [] } },
-        { id: 'pourover',  label: 'Pour Over',  match: { anyTags: ['Brew Method_Pour Over'],  excludeTags: [] } },
+        // Pour over + batch brew are filter-roast methods — OQ only batch
+        // brews filter coffee, and filter is always served black. So these
+        // options are hidden entirely for milk drinkers.
+        { id: 'pourover',  label: 'Pour Over',  hideWhen: { style: ['milk'] }, match: { anyTags: ['Brew Method_Pour Over'],  excludeTags: [] } },
         { id: 'stovetop',  label: 'Stovetop',   match: { anyTags: ['Brew Method_Stovetop'],   excludeTags: [] } },
-        { id: 'batchbrew', label: 'Batch Brew', match: { anyTags: ['Brew Method_Batch Brew'], excludeTags: [] } },
+        { id: 'batchbrew', label: 'Batch Brew', hideWhen: { style: ['milk'] }, match: { anyTags: ['Brew Method_Batch Brew'], excludeTags: [] } },
         { id: 'coldbrew',  label: 'Cold Brew',  match: { anyTags: ['Brew Method_Cold Brew'],  excludeTags: [] } },
         // "Other" = no brew filter; any coffee that passed Q1 qualifies.
         { id: 'other',     label: 'Other',      match: { anyTags: [], excludeTags: [] } },
@@ -161,7 +168,7 @@ window.OQ_QUIZ_CONFIG = {
     introButton: 'Find my coffee',
     resultsTitle: 'Your coffee matches',
     resultsIntro: 'Fresh from our current lineup — every one of these suits how you brew and drink.',
-    sizeExplainer: 'You brew about {cupsLabel} cups a day, so we recommend the {size} bag — roughly {serves} brews, finished in about {days} days. That keeps every cup inside the ~3-week freshness window (coffee is fresh food!).',
+    sizeExplainer: 'Based on {cupsLabel} coffees a day, we recommend the {size} bag — you’ll finish it while it’s at its freshest.',
     fallbackNote: 'None of our current roasts are tagged for that exact combination, so here are your closest matches based on how you take your coffee.',
     emptyNote: 'We couldn’t find a match in the current lineup — browse all our coffees instead.',
     addToCart: 'Add to cart',
@@ -172,6 +179,8 @@ window.OQ_QUIZ_CONFIG = {
     soldOut: 'Sold out',
     startOver: 'Start over',
     back: 'Back',
+    continueLabel: 'Continue',
+    greatFor: 'Great for {method}',
     ofLabel: 'Question {n} of {total}',
   },
 
