@@ -144,11 +144,12 @@ tag. Change it in `quiz-config.js` if you'd rather match strictly.
 Styled per the Old Quarter Brand Manual: Primary Indigo `#0f135a` (3.1) with
 Palette 5 accents (3.2) — Light Indigo `#3a3f7d`, Teal `#85cfcb`, Ocean
 `#3c6875`, Salmon `#d77f67`. Typography (4.1/4.2) is HK Nova; since it's a
-licensed font the widget's font stack prefers `HK Nova` when the theme
-provides it and loads Hanken Grotesk (same foundry, Google Fonts) as the
-fallback, Extra Bold headings / regular body. To use real HK Nova, add the
-licensed webfonts to the theme with a `@font-face` named `HK Nova` — the
-quiz picks them up automatically.
+licensed font (and partial/trial copies render broken glyphs), the widget
+ships with Montserrat from Google Fonts — the brand-approved stand-in
+already used in OQ's Klaviyo emails — Extra Bold headings / regular body.
+To use real HK Nova, add licensed webfonts to the theme with a `@font-face`
+named `HK Nova`, then put `'HK Nova'` first in the two font stacks in
+`quiz-config.js`.
 
 ## Extras built in
 

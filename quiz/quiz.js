@@ -626,19 +626,19 @@
   /* ==========================================================================
      BOOT
      ========================================================================== */
-  /* HK Nova is the brand typeface but is commercially licensed; the CSS
-     stack prefers it if the host page provides it, and we load Hanken
-     Grotesk (same foundry, free) as the web fallback. */
+  /* HK Nova is the brand typeface but is commercially licensed (and partial
+     copies render broken glyphs), so the widget loads Montserrat — the
+     brand-approved stand-in already used in OQ's Klaviyo emails. */
   function loadFonts(cfg) {
     if (!cfg.brand || !cfg.brand.loadFonts) return;
     var have = false;
     document.querySelectorAll('link[href*="fonts.googleapis"]').forEach(function (l) {
-      if (/Hanken/.test(l.href)) have = true;
+      if (/Montserrat/.test(l.href)) have = true;
     });
     if (have) return;
     var link = el('link', {
       rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap',
+      href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap',
     });
     document.head.appendChild(link);
   }

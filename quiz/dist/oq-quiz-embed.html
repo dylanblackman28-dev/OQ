@@ -15,8 +15,9 @@
      Teal #85cfcb, Ocean #3c6875, Salmon #d77f67
    Typography per 4.1/4.2: HK Nova (Extra Bold headings, Medium body).
    HK Nova is licensed and partial/trial copies render broken glyphs, so the
-   shipped stack leads with Hanken Grotesk (same foundry, Google Fonts);
-   switch the stacks in quiz-config.js once proper HK Nova webfonts exist.
+   shipped stack leads with Montserrat (Google Fonts; also used in OQ's
+   Klaviyo emails). Switch the stacks in quiz-config.js once proper HK Nova
+   webfonts exist.
 
    Brand tokens are set as CSS variables by quiz.js from quiz-config.js.
    Everything is scoped under .oqq to avoid fighting the theme's CSS.
@@ -30,8 +31,8 @@
   --oqq-salmon: #d77f67;
   --oqq-tint: #f0f1f7;          /* indigo-tinted surface */
   --oqq-teal-tint: #e9f6f5;     /* teal-tinted surface */
-  --oqq-heading-font: 'Hanken Grotesk', 'Nunito Sans', sans-serif;
-  --oqq-body-font: 'Hanken Grotesk', 'Nunito Sans', sans-serif;
+  --oqq-heading-font: 'Montserrat', 'Nunito Sans', sans-serif;
+  --oqq-body-font: 'Montserrat', 'Nunito Sans', sans-serif;
 
   font-family: var(--oqq-body-font);
   font-weight: 400;
@@ -405,14 +406,14 @@ window.OQ_QUIZ_CONFIG = {
   /* ---- Brand (per the Old Quarter Brand Manual) ----------------------------
      Typography 4.1/4.2: HK Nova. It's a licensed font we can't bundle, and
      partial/trial copies of it render broken glyphs, so the widget ships
-     with Hanken Grotesk (the same foundry's free Google Fonts release,
-     loaded by the widget). Once proper licensed HK Nova webfonts are
-     installed in the theme via @font-face, change these two stacks to
-     "'HK Nova', 'Hanken Grotesk', sans-serif".
+     with Montserrat (Google Fonts) — the closest-appearance stand-in and
+     already used in OQ's Klaviyo emails. Once proper licensed HK Nova
+     webfonts are installed in the theme via @font-face, change these two
+     stacks to "'HK Nova', 'Montserrat', sans-serif".
      Colour 3.1/3.2: Primary Indigo + Palette 5. */
   brand: {
-    headingFont: "'Hanken Grotesk', 'Nunito Sans', sans-serif",
-    bodyFont: "'Hanken Grotesk', 'Nunito Sans', sans-serif",
+    headingFont: "'Montserrat', 'Nunito Sans', sans-serif",
+    bodyFont: "'Montserrat', 'Nunito Sans', sans-serif",
     indigo: '#0f135a',        // Primary Indigo (3.1) — headings, buttons, links
     indigoLight: '#3a3f7d',   // Light Indigo — hovers, secondary text
     teal: '#85cfcb',          // Palette 5 Teal — progress, selected tints
@@ -1051,19 +1052,19 @@ window.OQ_QUIZ_CONFIG = {
   /* ==========================================================================
      BOOT
      ========================================================================== */
-  /* HK Nova is the brand typeface but is commercially licensed; the CSS
-     stack prefers it if the host page provides it, and we load Hanken
-     Grotesk (same foundry, free) as the web fallback. */
+  /* HK Nova is the brand typeface but is commercially licensed (and partial
+     copies render broken glyphs), so the widget loads Montserrat — the
+     brand-approved stand-in already used in OQ's Klaviyo emails. */
   function loadFonts(cfg) {
     if (!cfg.brand || !cfg.brand.loadFonts) return;
     var have = false;
     document.querySelectorAll('link[href*="fonts.googleapis"]').forEach(function (l) {
-      if (/Hanken/.test(l.href)) have = true;
+      if (/Montserrat/.test(l.href)) have = true;
     });
     if (have) return;
     var link = el('link', {
       rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap',
+      href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap',
     });
     document.head.appendChild(link);
   }

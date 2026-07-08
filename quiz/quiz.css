@@ -6,8 +6,9 @@
      Teal #85cfcb, Ocean #3c6875, Salmon #d77f67
    Typography per 4.1/4.2: HK Nova (Extra Bold headings, Medium body).
    HK Nova is licensed and partial/trial copies render broken glyphs, so the
-   shipped stack leads with Hanken Grotesk (same foundry, Google Fonts);
-   switch the stacks in quiz-config.js once proper HK Nova webfonts exist.
+   shipped stack leads with Montserrat (Google Fonts; also used in OQ's
+   Klaviyo emails). Switch the stacks in quiz-config.js once proper HK Nova
+   webfonts exist.
 
    Brand tokens are set as CSS variables by quiz.js from quiz-config.js.
    Everything is scoped under .oqq to avoid fighting the theme's CSS.
@@ -21,8 +22,8 @@
   --oqq-salmon: #d77f67;
   --oqq-tint: #f0f1f7;          /* indigo-tinted surface */
   --oqq-teal-tint: #e9f6f5;     /* teal-tinted surface */
-  --oqq-heading-font: 'Hanken Grotesk', 'Nunito Sans', sans-serif;
-  --oqq-body-font: 'Hanken Grotesk', 'Nunito Sans', sans-serif;
+  --oqq-heading-font: 'Montserrat', 'Nunito Sans', sans-serif;
+  --oqq-body-font: 'Montserrat', 'Nunito Sans', sans-serif;
 
   font-family: var(--oqq-body-font);
   font-weight: 400;
