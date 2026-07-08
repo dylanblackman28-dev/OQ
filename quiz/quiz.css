@@ -21,7 +21,6 @@
   --oqq-ocean: #3c6875;
   --oqq-salmon: #d77f67;
   --oqq-tint: #f0f1f7;          /* indigo-tinted surface */
-  --oqq-teal-tint: #e9f6f5;     /* teal-tinted surface */
   --oqq-heading-font: 'Montserrat', 'Nunito Sans', sans-serif;
   --oqq-body-font: 'Montserrat', 'Nunito Sans', sans-serif;
 
@@ -68,7 +67,7 @@
 }
 .oqq-choice:hover { background: #e6e8f2; border-color: var(--oqq-indigo-light); }
 .oqq-choice:active { transform: scale(.99); }
-.oqq-choice[aria-pressed="true"] { background: var(--oqq-teal-tint); border-color: var(--oqq-indigo); }
+.oqq-choice[aria-pressed="true"] { background: var(--oqq-teal); border-color: var(--oqq-indigo); }
 .oqq-choice-dot {
   width: 20px; height: 20px; border-radius: 50%;
   background: #fff; border: 2px solid #b9bdd6; flex: 0 0 auto;
@@ -101,8 +100,8 @@
 .oqq-results-head { text-align: center; margin-bottom: 10px; }
 .oqq-results-intro { text-align: center; color: #4a4d70; font-size: 17.5px; margin: 0 auto 6px; max-width: 680px; }
 .oqq-size-note {
-  background: var(--oqq-teal-tint); border: 1px solid #cfe9e7; border-radius: 8px;
-  padding: 16px 22px; font-size: 16px; line-height: 1.6; color: var(--oqq-ocean);
+  background: var(--oqq-teal); border: 0; border-radius: 8px;
+  padding: 16px 22px; font-size: 16px; line-height: 1.6; color: var(--oqq-indigo);
   max-width: 680px; margin: 20px auto 8px; text-align: center;
 }
 .oqq-fallback-note {
@@ -134,9 +133,9 @@
 .oqq-badge--hot { background: var(--oqq-salmon); color: #fff; border-color: var(--oqq-salmon); }
 .oqq-method-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .oqq-method-chip {
-  font-size: 12.5px; font-weight: 700; color: var(--oqq-ocean);
-  border: 1px solid var(--oqq-teal); border-radius: 999px; padding: 4px 10px;
-  background: var(--oqq-teal-tint);
+  font-size: 12.5px; font-weight: 700; color: var(--oqq-indigo);
+  border: 0; border-radius: 999px; padding: 5px 11px;
+  background: var(--oqq-teal);
 }
 .oqq-price { font-size: 18px; font-weight: 800; color: var(--oqq-indigo); }
 .oqq-sizes { display: flex; flex-wrap: wrap; gap: 6px; }
