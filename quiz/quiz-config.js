@@ -29,7 +29,11 @@ window.OQ_QUIZ_CONFIG = {
      products published to the Online Store are returned, so the quiz always
      reflects the current lineup automatically. */
   dataSource: {
-    collections: ['coffees'],       // "Specialty Coffee" = tag Coffee, minus gifts/subscriptions
+    // Union of both coffee collections (duplicates are removed). 'coffees' is
+    // tag-driven and misses products lacking the exact "Coffee" tag (e.g.
+    // Mae Chedi Cold Brew), while 'all-coffee' is manually curated — fetching
+    // both means a product slips through only if it's missing from BOTH.
+    collections: ['coffees', 'all-coffee'],
     // Optional dev/preview override: URL of a static products.json snapshot.
     // Used automatically when the quiz is NOT running on the store domain.
     staticDataUrl: null,
@@ -59,28 +63,40 @@ window.OQ_QUIZ_CONFIG = {
       id: 'style',
       title: 'Do you prefer milk, black or coffee both ways?',
       type: 'filter',
+      /* "Both Ways"-tagged coffees are by definition good with milk AND
+         black, so they match all three answers. A both-ways drinker can
+         enjoy the milk and black coffees too — the only hard rule is that
+         filter roasts are black-only, never shown for Milk or Both Ways.
+         preferTags controls ranking: coffees tagged exactly for the
+         customer's answer appear first. */
       choices: [
         {
           id: 'milk',
           label: 'Milk',
           match: {
-            anyTags: ['Best Enjoyed_Milk'],
+            anyTags: ['Best Enjoyed_Milk', 'Best Enjoyed_Both Ways'],
             // Filter roasts are black-coffee products — never with milk.
             excludeTags: ['Roast Type_Filter', 'Filter'],
           },
+          preferTags: ['Best Enjoyed_Milk'],
         },
         {
           id: 'black',
           label: 'Black',
-          match: { anyTags: ['Best Enjoyed_Black'], excludeTags: [] },
+          match: {
+            anyTags: ['Best Enjoyed_Black', 'Best Enjoyed_Both Ways'],
+            excludeTags: [],
+          },
+          preferTags: ['Best Enjoyed_Black'],
         },
         {
           id: 'both',
           label: 'Both Ways',
           match: {
-            anyTags: ['Best Enjoyed_Both Ways'],
+            anyTags: ['Best Enjoyed_Both Ways', 'Best Enjoyed_Milk', 'Best Enjoyed_Black'],
             excludeTags: ['Roast Type_Filter', 'Filter'],
           },
+          preferTags: ['Best Enjoyed_Both Ways'],
         },
       ],
     },
@@ -184,17 +200,20 @@ window.OQ_QUIZ_CONFIG = {
     ofLabel: 'Question {n} of {total}',
   },
 
-  /* ---- Brand (pulled from the live Old Quarter theme) ---------------------- */
+  /* ---- Brand (per the Old Quarter Brand Manual) ----------------------------
+     Typography 4.1/4.2: HK Nova. It's a licensed font, so the stack prefers
+     it (add HK Nova webfonts to the theme and the quiz uses them
+     automatically) and falls back to Hanken Grotesk — the same foundry's
+     free Google Fonts release — loaded by the widget.
+     Colour 3.1/3.2: Primary Indigo + Palette 5. */
   brand: {
-    headingFont: "'Graduate', cursive",
-    bodyFont: "'Nunito Sans', sans-serif",
-    accent: '#2c737f',        // OQ teal (CTA)
-    accentHover: '#235c66',
-    dark: '#000000',
-    brown: '#8a4d36',         // section-title brown
-    cream: '#fdfcf7',
-    paper: '#ffffff',
-    sale: '#ba2323',
-    loadFonts: true,          // set false if the host page already loads these fonts
+    headingFont: "'HK Nova', 'Hanken Grotesk', 'Nunito Sans', sans-serif",
+    bodyFont: "'HK Nova', 'Hanken Grotesk', 'Nunito Sans', sans-serif",
+    indigo: '#0f135a',        // Primary Indigo (3.1) — headings, buttons, links
+    indigoLight: '#3a3f7d',   // Light Indigo — hovers, secondary text
+    teal: '#85cfcb',          // Palette 5 Teal — progress, selected tints
+    ocean: '#3c6875',         // Palette 5 Ocean — chips, subdued accents
+    salmon: '#d77f67',        // Palette 5 Salmon — highlight badges
+    loadFonts: true,          // set false if the host page already loads the fonts
   },
 };

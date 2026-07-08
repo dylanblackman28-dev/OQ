@@ -199,11 +199,24 @@
     }) };
   }
 
-  /* Rank: suits more of the customer's selected methods first, then boost
-     tags (best sellers etc.), then original collection order. */
+  /* Rank: 1) coffees tagged exactly for the customer's answers (a choice's
+     preferTags) first, 2) then coffees suiting more of their selected brew
+     methods, 3) then boost tags (best sellers etc.), 4) original order. */
   function rank(cfg, list, answers) {
     var boosts = cfg.boostTags || [];
-    var multiQs = cfg.questions.filter(function (q) { return q.type === 'filter' && q.multiSelect; });
+    var filterQs = cfg.questions.filter(function (q) { return q.type === 'filter'; });
+    var multiQs = filterQs.filter(function (q) { return q.multiSelect; });
+    function preferScore(p) {
+      var n = 0;
+      filterQs.forEach(function (q) {
+        asChoices(answers[q.id]).forEach(function (c) {
+          (c.preferTags || []).forEach(function (t) {
+            if (p.tags.indexOf(t) !== -1) n++;
+          });
+        });
+      });
+      return -n; // more preferred-tag hits = earlier
+    }
     function boostScore(p) {
       for (var i = 0; i < boosts.length; i++) {
         if (p.tags.indexOf(boosts[i]) !== -1) return i;
@@ -215,8 +228,8 @@
       multiQs.forEach(function (q) { n += matchedChoices(p, answers[q.id]).length; });
       return -n; // more matches = earlier
     }
-    return list.map(function (p, i) { return { p: p, m: methodScore(p), s: boostScore(p), i: i }; })
-      .sort(function (a, b) { return a.m - b.m || a.s - b.s || a.i - b.i; })
+    return list.map(function (p, i) { return { p: p, f: preferScore(p), m: methodScore(p), s: boostScore(p), i: i }; })
+      .sort(function (a, b) { return a.f - b.f || a.m - b.m || a.s - b.s || a.i - b.i; })
       .map(function (x) { return x.p; });
   }
 
@@ -320,9 +333,8 @@
     this.mount.appendChild(root);
     var b = this.cfg.brand || {};
     var map = {
-      '--oqq-accent': b.accent, '--oqq-accent-hover': b.accentHover,
-      '--oqq-dark': b.dark, '--oqq-brown': b.brown, '--oqq-cream': b.cream,
-      '--oqq-paper': b.paper, '--oqq-sale': b.sale,
+      '--oqq-indigo': b.indigo, '--oqq-indigo-light': b.indigoLight,
+      '--oqq-teal': b.teal, '--oqq-ocean': b.ocean, '--oqq-salmon': b.salmon,
       '--oqq-heading-font': b.headingFont, '--oqq-body-font': b.bodyFont,
     };
     Object.keys(map).forEach(function (k) { if (map[k]) root.style.setProperty(k, map[k]); });
@@ -614,16 +626,19 @@
   /* ==========================================================================
      BOOT
      ========================================================================== */
+  /* HK Nova is the brand typeface but is commercially licensed; the CSS
+     stack prefers it if the host page provides it, and we load Hanken
+     Grotesk (same foundry, free) as the web fallback. */
   function loadFonts(cfg) {
     if (!cfg.brand || !cfg.brand.loadFonts) return;
     var have = false;
     document.querySelectorAll('link[href*="fonts.googleapis"]').forEach(function (l) {
-      if (/Graduate/.test(l.href)) have = true;
+      if (/Hanken/.test(l.href)) have = true;
     });
     if (have) return;
     var link = el('link', {
       rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Graduate&family=Nunito+Sans:wght@400;600;700;800&display=swap',
+      href: 'https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap',
     });
     document.head.appendChild(link);
   }

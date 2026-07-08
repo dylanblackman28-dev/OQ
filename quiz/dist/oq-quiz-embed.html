@@ -9,23 +9,32 @@
 <style>
 /* ============================================================================
    OLD QUARTER COFFEE QUIZ — STYLES
+   ----------------------------------------------------------------------------
+   Palette per the Old Quarter Brand Manual:
+     Primary Indigo #0f135a (3.1) · Palette 5 (3.2): Light Indigo #3a3f7d,
+     Teal #85cfcb, Ocean #3c6875, Salmon #d77f67
+   Typography per 4.1/4.2: HK Nova (Extra Bold headings, Medium body).
+   HK Nova is a licensed font — the stack uses it when the store provides it
+   and falls back to Hanken Grotesk (same foundry, Google Fonts).
+
    Brand tokens are set as CSS variables by quiz.js from quiz-config.js.
    Everything is scoped under .oqq to avoid fighting the theme's CSS.
    ============================================================================ */
 
 .oqq {
-  --oqq-accent: #2c737f;
-  --oqq-accent-hover: #235c66;
-  --oqq-dark: #000000;
-  --oqq-brown: #8a4d36;
-  --oqq-cream: #fdfcf7;
-  --oqq-paper: #ffffff;
-  --oqq-sale: #ba2323;
-  --oqq-heading-font: 'Graduate', cursive;
-  --oqq-body-font: 'Nunito Sans', sans-serif;
+  --oqq-indigo: #0f135a;
+  --oqq-indigo-light: #3a3f7d;
+  --oqq-teal: #85cfcb;
+  --oqq-ocean: #3c6875;
+  --oqq-salmon: #d77f67;
+  --oqq-tint: #f0f1f7;          /* indigo-tinted surface */
+  --oqq-teal-tint: #e9f6f5;     /* teal-tinted surface */
+  --oqq-heading-font: 'HK Nova', 'Hanken Grotesk', 'Nunito Sans', sans-serif;
+  --oqq-body-font: 'HK Nova', 'Hanken Grotesk', 'Nunito Sans', sans-serif;
 
   font-family: var(--oqq-body-font);
-  color: #1c1c1c;
+  font-weight: 400;
+  color: #24274a;
   max-width: 860px;
   margin: 0 auto;
   padding: 24px 16px 48px;
@@ -36,72 +45,74 @@
 .oqq button { font-family: inherit; cursor: pointer; }
 
 /* ---- progress ---- */
-.oqq-progress { height: 5px; background: #ececec; border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
-.oqq-progress-bar { height: 100%; background: var(--oqq-accent); border-radius: 3px; width: 0; transition: width .35s ease; }
-.oqq-step-label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #8b8b8b; margin-bottom: 28px; }
+.oqq-progress { height: 5px; background: var(--oqq-tint); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+.oqq-progress-bar { height: 100%; background: var(--oqq-teal); border-radius: 3px; width: 0; transition: width .35s ease; }
+.oqq-step-label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--oqq-indigo-light); margin-bottom: 28px; }
 
 /* ---- headings ---- */
 .oqq-title {
   font-family: var(--oqq-heading-font);
-  font-weight: 400;
-  font-size: clamp(22px, 4vw, 32px);
-  line-height: 1.25;
+  font-weight: 800;                 /* HK Nova Extra Bold */
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -.01em;
   text-align: center;
-  color: #14225c;
+  color: var(--oqq-indigo);
   margin: 0 0 6px;
 }
-.oqq-subtitle { text-align: center; color: #6f6f6f; font-size: 15px; margin: 0 0 26px; }
-.oqq-intro-text { text-align: center; color: #4a4a4a; font-size: 17px; line-height: 1.6; max-width: 560px; margin: 0 auto 28px; }
+.oqq-subtitle { text-align: center; color: var(--oqq-ocean); font-size: 15px; margin: 0 0 26px; }
+.oqq-intro-text { text-align: center; color: #4a4d70; font-size: 17px; line-height: 1.6; max-width: 560px; margin: 0 auto 28px; }
 
 /* ---- choice buttons ---- */
 .oqq-choices { display: flex; flex-direction: column; gap: 12px; max-width: 520px; margin: 0 auto; }
 .oqq-choice {
   display: flex; align-items: center; gap: 14px;
   width: 100%; padding: 15px 20px;
-  background: #e9e9ef; border: 2px solid transparent; border-radius: 8px;
-  font-size: 16px; font-weight: 600; color: #1c1c1c; text-align: left;
+  background: var(--oqq-tint); border: 2px solid transparent; border-radius: 8px;
+  font-size: 16px; font-weight: 600; color: var(--oqq-indigo); text-align: left;
   transition: border-color .15s ease, background .15s ease, transform .1s ease;
 }
-.oqq-choice:hover { background: #dfe7e8; border-color: var(--oqq-accent); }
+.oqq-choice:hover { background: #e6e8f2; border-color: var(--oqq-indigo-light); }
 .oqq-choice:active { transform: scale(.99); }
-.oqq-choice[aria-pressed="true"] { background: #dfe7e8; border-color: var(--oqq-accent); }
-.oqq-choice[aria-pressed="true"] .oqq-choice-dot {
-  border-color: var(--oqq-accent);
-  background: var(--oqq-accent);
-  box-shadow: inset 0 0 0 3px #fff;
-}
+.oqq-choice[aria-pressed="true"] { background: var(--oqq-teal-tint); border-color: var(--oqq-indigo); }
 .oqq-choice-dot {
   width: 18px; height: 18px; border-radius: 50%;
-  background: #fff; border: 2px solid #c4c4c4; flex: 0 0 auto;
+  background: #fff; border: 2px solid #b9bdd6; flex: 0 0 auto;
 }
-.oqq-choice:hover .oqq-choice-dot { border-color: var(--oqq-accent); }
+.oqq-choice:hover .oqq-choice-dot { border-color: var(--oqq-indigo-light); }
+.oqq-choice[aria-pressed="true"] .oqq-choice-dot {
+  border-color: var(--oqq-indigo);
+  background: var(--oqq-indigo);
+  box-shadow: inset 0 0 0 3px #fff;
+}
 
 /* ---- primary buttons / nav ---- */
 .oqq-cta {
   display: inline-block; padding: 14px 34px;
-  background: var(--oqq-accent); color: #fff; border: 0; border-radius: 6px;
+  background: var(--oqq-indigo); color: #fff; border: 0; border-radius: 6px;
+  font-family: var(--oqq-heading-font);
   font-size: 15px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
 }
-.oqq-cta:hover { background: var(--oqq-accent-hover); }
-.oqq-cta:disabled { background: #c2c2c2; cursor: not-allowed; }
+.oqq-cta:hover { background: var(--oqq-indigo-light); }
+.oqq-cta:disabled { background: #b9bdd6; cursor: not-allowed; }
 .oqq-center { text-align: center; }
 .oqq-nav { margin-top: 26px; text-align: center; }
 .oqq-back {
-  background: none; border: 0; color: #8b8b8b; font-size: 14px;
+  background: none; border: 0; color: var(--oqq-indigo-light); font-size: 14px;
   text-decoration: underline; padding: 8px 12px;
 }
-.oqq-back:hover { color: var(--oqq-dark); }
+.oqq-back:hover { color: var(--oqq-indigo); }
 
 /* ---- results ---- */
 .oqq-results-head { text-align: center; margin-bottom: 10px; }
-.oqq-results-intro { text-align: center; color: #4a4a4a; margin: 0 auto 6px; max-width: 620px; }
+.oqq-results-intro { text-align: center; color: #4a4d70; margin: 0 auto 6px; max-width: 620px; }
 .oqq-size-note {
-  background: var(--oqq-cream); border: 1px solid #efe9d8; border-radius: 8px;
-  padding: 14px 18px; font-size: 14.5px; line-height: 1.55; color: #4a4a4a;
+  background: var(--oqq-teal-tint); border: 1px solid #cfe9e7; border-radius: 8px;
+  padding: 14px 18px; font-size: 14.5px; line-height: 1.55; color: var(--oqq-ocean);
   max-width: 620px; margin: 18px auto 8px; text-align: center;
 }
 .oqq-fallback-note {
-  color: var(--oqq-brown); font-size: 14.5px; text-align: center;
+  color: var(--oqq-ocean); font-size: 14.5px; text-align: center;
   max-width: 620px; margin: 10px auto 0;
 }
 .oqq-grid {
@@ -109,61 +120,62 @@
   gap: 18px; margin-top: 26px;
 }
 .oqq-card {
-  background: var(--oqq-paper); border: 1px solid #ececec; border-radius: 10px;
+  background: #fff; border: 1px solid #e3e5f0; border-radius: 10px;
   overflow: hidden; display: flex; flex-direction: column;
   transition: box-shadow .15s ease;
 }
-.oqq-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); }
-.oqq-card-img { aspect-ratio: 1/1; background: var(--oqq-cream); }
+.oqq-card:hover { box-shadow: 0 6px 18px rgba(15, 19, 90, .12); }
+.oqq-card-img { aspect-ratio: 1/1; background: var(--oqq-tint); }
 .oqq-card-img img { width: 100%; height: 100%; object-fit: cover; }
 .oqq-card-body { padding: 14px 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.oqq-card-title { font-size: 15.5px; font-weight: 700; line-height: 1.35; margin: 0; }
-.oqq-card-title a { color: inherit; text-decoration: none; }
-.oqq-card-title a:hover { color: var(--oqq-accent); }
+.oqq-card-title { font-family: var(--oqq-heading-font); font-size: 15.5px; font-weight: 700; line-height: 1.35; margin: 0; }
+.oqq-card-title a { color: var(--oqq-indigo); text-decoration: none; }
+.oqq-card-title a:hover { color: var(--oqq-indigo-light); }
 .oqq-badges { display: flex; flex-wrap: wrap; gap: 5px; }
 .oqq-badge {
   font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-  background: var(--oqq-cream); color: var(--oqq-brown);
-  border: 1px solid #eadfce; border-radius: 4px; padding: 3px 7px;
+  background: var(--oqq-tint); color: var(--oqq-indigo-light);
+  border: 1px solid #d9dcec; border-radius: 4px; padding: 3px 7px;
 }
-.oqq-badge--hot { background: var(--oqq-accent); color: #fff; border-color: var(--oqq-accent); }
+.oqq-badge--hot { background: var(--oqq-salmon); color: #fff; border-color: var(--oqq-salmon); }
 .oqq-method-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .oqq-method-chip {
-  font-size: 11.5px; font-weight: 700; color: var(--oqq-accent);
-  border: 1px solid var(--oqq-accent); border-radius: 999px; padding: 3px 9px;
-  background: rgba(44, 115, 127, .06);
+  font-size: 11.5px; font-weight: 700; color: var(--oqq-ocean);
+  border: 1px solid var(--oqq-teal); border-radius: 999px; padding: 3px 9px;
+  background: var(--oqq-teal-tint);
 }
-.oqq-price { font-size: 16px; font-weight: 800; color: #1c1c1c; }
+.oqq-price { font-size: 16px; font-weight: 800; color: var(--oqq-indigo); }
 .oqq-sizes { display: flex; flex-wrap: wrap; gap: 6px; }
 .oqq-size-btn {
-  padding: 6px 12px; border-radius: 5px; border: 1.5px solid #d8d8d8;
-  background: #fff; font-size: 13px; font-weight: 600; color: #444; position: relative;
+  padding: 6px 12px; border-radius: 5px; border: 1.5px solid #c9cde0;
+  background: #fff; font-size: 13px; font-weight: 600; color: #4a4d70; position: relative;
 }
-.oqq-size-btn[aria-pressed="true"] { border-color: var(--oqq-accent); background: var(--oqq-accent); color: #fff; }
+.oqq-size-btn[aria-pressed="true"] { border-color: var(--oqq-indigo); background: var(--oqq-indigo); color: #fff; }
 .oqq-size-btn:disabled { opacity: .38; cursor: not-allowed; text-decoration: line-through; }
 .oqq-size-rec {
   display: block; font-size: 9.5px; font-weight: 800; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--oqq-accent); margin-top: 1px;
+  text-transform: uppercase; color: var(--oqq-ocean); margin-top: 1px;
 }
-.oqq-size-btn[aria-pressed="true"] .oqq-size-rec { color: #d8f0ee; }
+.oqq-size-btn[aria-pressed="true"] .oqq-size-rec { color: var(--oqq-teal); }
 .oqq-atc {
   margin-top: auto; width: 100%; padding: 12px 10px;
-  background: var(--oqq-dark); color: #fff; border: 0; border-radius: 6px;
+  background: var(--oqq-indigo); color: #fff; border: 0; border-radius: 6px;
+  font-family: var(--oqq-heading-font);
   font-size: 13.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   text-align: center; text-decoration: none; display: inline-block;
 }
-.oqq-atc:hover { background: #333; }
-.oqq-atc[data-state="added"] { background: var(--oqq-accent); }
-.oqq-atc:disabled { background: #bbb; cursor: not-allowed; }
+.oqq-atc:hover { background: var(--oqq-indigo-light); }
+.oqq-atc[data-state="added"] { background: var(--oqq-ocean); }
+.oqq-atc:disabled { background: #b9bdd6; cursor: not-allowed; }
 .oqq-card-links { text-align: center; }
-.oqq-card-links a { font-size: 13px; color: #6f6f6f; text-decoration: underline; }
-.oqq-card-links a:hover { color: var(--oqq-accent); }
+.oqq-card-links a { font-size: 13px; color: var(--oqq-indigo-light); text-decoration: underline; }
+.oqq-card-links a:hover { color: var(--oqq-indigo); }
 
 /* ---- states ---- */
-.oqq-loading, .oqq-error { text-align: center; padding: 48px 12px; color: #6f6f6f; font-size: 15px; }
+.oqq-loading, .oqq-error { text-align: center; padding: 48px 12px; color: #4a4d70; font-size: 15px; }
 .oqq-spinner {
   width: 34px; height: 34px; margin: 0 auto 14px; border-radius: 50%;
-  border: 3px solid #e3e3e3; border-top-color: var(--oqq-accent);
+  border: 3px solid var(--oqq-tint); border-top-color: var(--oqq-teal);
   animation: oqq-spin .8s linear infinite;
 }
 @keyframes oqq-spin { to { transform: rotate(360deg); } }
@@ -206,7 +218,11 @@ window.OQ_QUIZ_CONFIG = {
      products published to the Online Store are returned, so the quiz always
      reflects the current lineup automatically. */
   dataSource: {
-    collections: ['coffees'],       // "Specialty Coffee" = tag Coffee, minus gifts/subscriptions
+    // Union of both coffee collections (duplicates are removed). 'coffees' is
+    // tag-driven and misses products lacking the exact "Coffee" tag (e.g.
+    // Mae Chedi Cold Brew), while 'all-coffee' is manually curated — fetching
+    // both means a product slips through only if it's missing from BOTH.
+    collections: ['coffees', 'all-coffee'],
     // Optional dev/preview override: URL of a static products.json snapshot.
     // Used automatically when the quiz is NOT running on the store domain.
     staticDataUrl: null,
@@ -236,28 +252,40 @@ window.OQ_QUIZ_CONFIG = {
       id: 'style',
       title: 'Do you prefer milk, black or coffee both ways?',
       type: 'filter',
+      /* "Both Ways"-tagged coffees are by definition good with milk AND
+         black, so they match all three answers. A both-ways drinker can
+         enjoy the milk and black coffees too — the only hard rule is that
+         filter roasts are black-only, never shown for Milk or Both Ways.
+         preferTags controls ranking: coffees tagged exactly for the
+         customer's answer appear first. */
       choices: [
         {
           id: 'milk',
           label: 'Milk',
           match: {
-            anyTags: ['Best Enjoyed_Milk'],
+            anyTags: ['Best Enjoyed_Milk', 'Best Enjoyed_Both Ways'],
             // Filter roasts are black-coffee products — never with milk.
             excludeTags: ['Roast Type_Filter', 'Filter'],
           },
+          preferTags: ['Best Enjoyed_Milk'],
         },
         {
           id: 'black',
           label: 'Black',
-          match: { anyTags: ['Best Enjoyed_Black'], excludeTags: [] },
+          match: {
+            anyTags: ['Best Enjoyed_Black', 'Best Enjoyed_Both Ways'],
+            excludeTags: [],
+          },
+          preferTags: ['Best Enjoyed_Black'],
         },
         {
           id: 'both',
           label: 'Both Ways',
           match: {
-            anyTags: ['Best Enjoyed_Both Ways'],
+            anyTags: ['Best Enjoyed_Both Ways', 'Best Enjoyed_Milk', 'Best Enjoyed_Black'],
             excludeTags: ['Roast Type_Filter', 'Filter'],
           },
+          preferTags: ['Best Enjoyed_Both Ways'],
         },
       ],
     },
@@ -361,18 +389,21 @@ window.OQ_QUIZ_CONFIG = {
     ofLabel: 'Question {n} of {total}',
   },
 
-  /* ---- Brand (pulled from the live Old Quarter theme) ---------------------- */
+  /* ---- Brand (per the Old Quarter Brand Manual) ----------------------------
+     Typography 4.1/4.2: HK Nova. It's a licensed font, so the stack prefers
+     it (add HK Nova webfonts to the theme and the quiz uses them
+     automatically) and falls back to Hanken Grotesk — the same foundry's
+     free Google Fonts release — loaded by the widget.
+     Colour 3.1/3.2: Primary Indigo + Palette 5. */
   brand: {
-    headingFont: "'Graduate', cursive",
-    bodyFont: "'Nunito Sans', sans-serif",
-    accent: '#2c737f',        // OQ teal (CTA)
-    accentHover: '#235c66',
-    dark: '#000000',
-    brown: '#8a4d36',         // section-title brown
-    cream: '#fdfcf7',
-    paper: '#ffffff',
-    sale: '#ba2323',
-    loadFonts: true,          // set false if the host page already loads these fonts
+    headingFont: "'HK Nova', 'Hanken Grotesk', 'Nunito Sans', sans-serif",
+    bodyFont: "'HK Nova', 'Hanken Grotesk', 'Nunito Sans', sans-serif",
+    indigo: '#0f135a',        // Primary Indigo (3.1) — headings, buttons, links
+    indigoLight: '#3a3f7d',   // Light Indigo — hovers, secondary text
+    teal: '#85cfcb',          // Palette 5 Teal — progress, selected tints
+    ocean: '#3c6875',         // Palette 5 Ocean — chips, subdued accents
+    salmon: '#d77f67',        // Palette 5 Salmon — highlight badges
+    loadFonts: true,          // set false if the host page already loads the fonts
   },
 };
 </script>
@@ -578,11 +609,24 @@ window.OQ_QUIZ_CONFIG = {
     }) };
   }
 
-  /* Rank: suits more of the customer's selected methods first, then boost
-     tags (best sellers etc.), then original collection order. */
+  /* Rank: 1) coffees tagged exactly for the customer's answers (a choice's
+     preferTags) first, 2) then coffees suiting more of their selected brew
+     methods, 3) then boost tags (best sellers etc.), 4) original order. */
   function rank(cfg, list, answers) {
     var boosts = cfg.boostTags || [];
-    var multiQs = cfg.questions.filter(function (q) { return q.type === 'filter' && q.multiSelect; });
+    var filterQs = cfg.questions.filter(function (q) { return q.type === 'filter'; });
+    var multiQs = filterQs.filter(function (q) { return q.multiSelect; });
+    function preferScore(p) {
+      var n = 0;
+      filterQs.forEach(function (q) {
+        asChoices(answers[q.id]).forEach(function (c) {
+          (c.preferTags || []).forEach(function (t) {
+            if (p.tags.indexOf(t) !== -1) n++;
+          });
+        });
+      });
+      return -n; // more preferred-tag hits = earlier
+    }
     function boostScore(p) {
       for (var i = 0; i < boosts.length; i++) {
         if (p.tags.indexOf(boosts[i]) !== -1) return i;
@@ -594,8 +638,8 @@ window.OQ_QUIZ_CONFIG = {
       multiQs.forEach(function (q) { n += matchedChoices(p, answers[q.id]).length; });
       return -n; // more matches = earlier
     }
-    return list.map(function (p, i) { return { p: p, m: methodScore(p), s: boostScore(p), i: i }; })
-      .sort(function (a, b) { return a.m - b.m || a.s - b.s || a.i - b.i; })
+    return list.map(function (p, i) { return { p: p, f: preferScore(p), m: methodScore(p), s: boostScore(p), i: i }; })
+      .sort(function (a, b) { return a.f - b.f || a.m - b.m || a.s - b.s || a.i - b.i; })
       .map(function (x) { return x.p; });
   }
 
@@ -699,9 +743,8 @@ window.OQ_QUIZ_CONFIG = {
     this.mount.appendChild(root);
     var b = this.cfg.brand || {};
     var map = {
-      '--oqq-accent': b.accent, '--oqq-accent-hover': b.accentHover,
-      '--oqq-dark': b.dark, '--oqq-brown': b.brown, '--oqq-cream': b.cream,
-      '--oqq-paper': b.paper, '--oqq-sale': b.sale,
+      '--oqq-indigo': b.indigo, '--oqq-indigo-light': b.indigoLight,
+      '--oqq-teal': b.teal, '--oqq-ocean': b.ocean, '--oqq-salmon': b.salmon,
       '--oqq-heading-font': b.headingFont, '--oqq-body-font': b.bodyFont,
     };
     Object.keys(map).forEach(function (k) { if (map[k]) root.style.setProperty(k, map[k]); });
@@ -993,16 +1036,19 @@ window.OQ_QUIZ_CONFIG = {
   /* ==========================================================================
      BOOT
      ========================================================================== */
+  /* HK Nova is the brand typeface but is commercially licensed; the CSS
+     stack prefers it if the host page provides it, and we load Hanken
+     Grotesk (same foundry, free) as the web fallback. */
   function loadFonts(cfg) {
     if (!cfg.brand || !cfg.brand.loadFonts) return;
     var have = false;
     document.querySelectorAll('link[href*="fonts.googleapis"]').forEach(function (l) {
-      if (/Graduate/.test(l.href)) have = true;
+      if (/Hanken/.test(l.href)) have = true;
     });
     if (have) return;
     var link = el('link', {
       rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Graduate&family=Nunito+Sans:wght@400;600;700;800&display=swap',
+      href: 'https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap',
     });
     document.head.appendChild(link);
   }

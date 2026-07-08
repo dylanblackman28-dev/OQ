@@ -94,11 +94,16 @@ day, we recommend the 500g bag…") without surfacing the maths.
 
 ## How matching works (mirrors the old app's Link Collections)
 
-| Question | Choice | Matches products tagged | Excludes |
-|---|---|---|---|
-| Style | Milk | `Best Enjoyed_Milk` | `Roast Type_Filter`, `Filter` |
-| Style | Black | `Best Enjoyed_Black` | — |
-| Style | Both Ways | `Best Enjoyed_Both Ways` | `Roast Type_Filter`, `Filter` |
+`Best Enjoyed_Both Ways` coffees are by definition good with milk AND black,
+so they match every style answer; a both-ways drinker can also enjoy the milk
+and black coffees. The style the customer actually picked ranks first
+(`preferTags`). The one hard rule: filter roasts are black-only.
+
+| Question | Choice | Matches products tagged | Excludes | Ranked first |
+|---|---|---|---|---|
+| Style | Milk | `Best Enjoyed_Milk` or `_Both Ways` | `Roast Type_Filter`, `Filter` | `_Milk` |
+| Style | Black | `Best Enjoyed_Black` or `_Both Ways` | — | `_Black` |
+| Style | Both Ways | any `Best Enjoyed_*` | `Roast Type_Filter`, `Filter` | `_Both Ways` |
 | Brew | Espresso | `Roast Type_Espresso` **or** `Brew Method_Espresso` | — |
 | Brew | AeroPress…Cold Brew | matching `Brew Method_*` tag | — |
 | Brew | Pour Over / Batch Brew | matching `Brew Method_*` tag | hidden when Q1 = Milk |
@@ -133,6 +138,17 @@ tag. Change it in `quiz-config.js` if you'd rather match strictly.
 | `index.html` | Standalone dev preview (`?data=snapshot.json` for off-store testing) |
 | `dist/oq-quiz-embed.html` | Built single-file embed — what you paste into Shopify |
 | `../scripts/build_quiz_embed.py` | Rebuilds the embed after config edits |
+
+## Brand
+
+Styled per the Old Quarter Brand Manual: Primary Indigo `#0f135a` (3.1) with
+Palette 5 accents (3.2) — Light Indigo `#3a3f7d`, Teal `#85cfcb`, Ocean
+`#3c6875`, Salmon `#d77f67`. Typography (4.1/4.2) is HK Nova; since it's a
+licensed font the widget's font stack prefers `HK Nova` when the theme
+provides it and loads Hanken Grotesk (same foundry, Google Fonts) as the
+fallback, Extra Bold headings / regular body. To use real HK Nova, add the
+licensed webfonts to the theme with a `@font-face` named `HK Nova` — the
+quiz picks them up automatically.
 
 ## Extras built in
 
