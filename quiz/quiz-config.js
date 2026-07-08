@@ -201,14 +201,16 @@ window.OQ_QUIZ_CONFIG = {
   },
 
   /* ---- Brand (per the Old Quarter Brand Manual) ----------------------------
-     Typography 4.1/4.2: HK Nova. It's a licensed font, so the stack prefers
-     it (add HK Nova webfonts to the theme and the quiz uses them
-     automatically) and falls back to Hanken Grotesk — the same foundry's
-     free Google Fonts release — loaded by the widget.
+     Typography 4.1/4.2: HK Nova. It's a licensed font we can't bundle, and
+     partial/trial copies of it render broken glyphs, so the widget ships
+     with Hanken Grotesk (the same foundry's free Google Fonts release,
+     loaded by the widget). Once proper licensed HK Nova webfonts are
+     installed in the theme via @font-face, change these two stacks to
+     "'HK Nova', 'Hanken Grotesk', sans-serif".
      Colour 3.1/3.2: Primary Indigo + Palette 5. */
   brand: {
-    headingFont: "'HK Nova', 'Hanken Grotesk', 'Nunito Sans', sans-serif",
-    bodyFont: "'HK Nova', 'Hanken Grotesk', 'Nunito Sans', sans-serif",
+    headingFont: "'Hanken Grotesk', 'Nunito Sans', sans-serif",
+    bodyFont: "'Hanken Grotesk', 'Nunito Sans', sans-serif",
     indigo: '#0f135a',        // Primary Indigo (3.1) — headings, buttons, links
     indigoLight: '#3a3f7d',   // Light Indigo — hovers, secondary text
     teal: '#85cfcb',          // Palette 5 Teal — progress, selected tints

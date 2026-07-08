@@ -5,8 +5,9 @@
      Primary Indigo #0f135a (3.1) · Palette 5 (3.2): Light Indigo #3a3f7d,
      Teal #85cfcb, Ocean #3c6875, Salmon #d77f67
    Typography per 4.1/4.2: HK Nova (Extra Bold headings, Medium body).
-   HK Nova is a licensed font — the stack uses it when the store provides it
-   and falls back to Hanken Grotesk (same foundry, Google Fonts).
+   HK Nova is licensed and partial/trial copies render broken glyphs, so the
+   shipped stack leads with Hanken Grotesk (same foundry, Google Fonts);
+   switch the stacks in quiz-config.js once proper HK Nova webfonts exist.
 
    Brand tokens are set as CSS variables by quiz.js from quiz-config.js.
    Everything is scoped under .oqq to avoid fighting the theme's CSS.
@@ -20,15 +21,16 @@
   --oqq-salmon: #d77f67;
   --oqq-tint: #f0f1f7;          /* indigo-tinted surface */
   --oqq-teal-tint: #e9f6f5;     /* teal-tinted surface */
-  --oqq-heading-font: 'HK Nova', 'Hanken Grotesk', 'Nunito Sans', sans-serif;
-  --oqq-body-font: 'HK Nova', 'Hanken Grotesk', 'Nunito Sans', sans-serif;
+  --oqq-heading-font: 'Hanken Grotesk', 'Nunito Sans', sans-serif;
+  --oqq-body-font: 'Hanken Grotesk', 'Nunito Sans', sans-serif;
 
   font-family: var(--oqq-body-font);
   font-weight: 400;
   color: #24274a;
-  max-width: 860px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 32px 20px 64px;
+  font-size: 17px;
   box-sizing: border-box;
 }
 .oqq *, .oqq *::before, .oqq *::after { box-sizing: border-box; }
@@ -38,36 +40,36 @@
 /* ---- progress ---- */
 .oqq-progress { height: 5px; background: var(--oqq-tint); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
 .oqq-progress-bar { height: 100%; background: var(--oqq-teal); border-radius: 3px; width: 0; transition: width .35s ease; }
-.oqq-step-label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--oqq-indigo-light); margin-bottom: 28px; }
+.oqq-step-label { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--oqq-indigo-light); margin-bottom: 28px; }
 
 /* ---- headings ---- */
 .oqq-title {
   font-family: var(--oqq-heading-font);
   font-weight: 800;                 /* HK Nova Extra Bold */
-  font-size: clamp(24px, 4vw, 34px);
+  font-size: clamp(27px, 4.5vw, 46px);
   line-height: 1.2;
   letter-spacing: -.01em;
   text-align: center;
   color: var(--oqq-indigo);
   margin: 0 0 6px;
 }
-.oqq-subtitle { text-align: center; color: var(--oqq-ocean); font-size: 15px; margin: 0 0 26px; }
-.oqq-intro-text { text-align: center; color: #4a4d70; font-size: 17px; line-height: 1.6; max-width: 560px; margin: 0 auto 28px; }
+.oqq-subtitle { text-align: center; color: var(--oqq-ocean); font-size: 16.5px; margin: 0 0 30px; }
+.oqq-intro-text { text-align: center; color: #4a4d70; font-size: 19px; line-height: 1.65; max-width: 640px; margin: 0 auto 32px; }
 
 /* ---- choice buttons ---- */
-.oqq-choices { display: flex; flex-direction: column; gap: 12px; max-width: 520px; margin: 0 auto; }
+.oqq-choices { display: flex; flex-direction: column; gap: 14px; max-width: 640px; margin: 0 auto; }
 .oqq-choice {
   display: flex; align-items: center; gap: 14px;
-  width: 100%; padding: 15px 20px;
+  width: 100%; padding: 18px 24px; min-height: 58px;
   background: var(--oqq-tint); border: 2px solid transparent; border-radius: 8px;
-  font-size: 16px; font-weight: 600; color: var(--oqq-indigo); text-align: left;
+  font-size: 17.5px; font-weight: 600; color: var(--oqq-indigo); text-align: left;
   transition: border-color .15s ease, background .15s ease, transform .1s ease;
 }
 .oqq-choice:hover { background: #e6e8f2; border-color: var(--oqq-indigo-light); }
 .oqq-choice:active { transform: scale(.99); }
 .oqq-choice[aria-pressed="true"] { background: var(--oqq-teal-tint); border-color: var(--oqq-indigo); }
 .oqq-choice-dot {
-  width: 18px; height: 18px; border-radius: 50%;
+  width: 20px; height: 20px; border-radius: 50%;
   background: #fff; border: 2px solid #b9bdd6; flex: 0 0 auto;
 }
 .oqq-choice:hover .oqq-choice-dot { border-color: var(--oqq-indigo-light); }
@@ -79,36 +81,36 @@
 
 /* ---- primary buttons / nav ---- */
 .oqq-cta {
-  display: inline-block; padding: 14px 34px;
+  display: inline-block; padding: 17px 44px;
   background: var(--oqq-indigo); color: #fff; border: 0; border-radius: 6px;
   font-family: var(--oqq-heading-font);
-  font-size: 15px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  font-size: 16.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
 }
 .oqq-cta:hover { background: var(--oqq-indigo-light); }
 .oqq-cta:disabled { background: #b9bdd6; cursor: not-allowed; }
 .oqq-center { text-align: center; }
 .oqq-nav { margin-top: 26px; text-align: center; }
 .oqq-back {
-  background: none; border: 0; color: var(--oqq-indigo-light); font-size: 14px;
+  background: none; border: 0; color: var(--oqq-indigo-light); font-size: 15px;
   text-decoration: underline; padding: 8px 12px;
 }
 .oqq-back:hover { color: var(--oqq-indigo); }
 
 /* ---- results ---- */
 .oqq-results-head { text-align: center; margin-bottom: 10px; }
-.oqq-results-intro { text-align: center; color: #4a4d70; margin: 0 auto 6px; max-width: 620px; }
+.oqq-results-intro { text-align: center; color: #4a4d70; font-size: 17.5px; margin: 0 auto 6px; max-width: 680px; }
 .oqq-size-note {
   background: var(--oqq-teal-tint); border: 1px solid #cfe9e7; border-radius: 8px;
-  padding: 14px 18px; font-size: 14.5px; line-height: 1.55; color: var(--oqq-ocean);
-  max-width: 620px; margin: 18px auto 8px; text-align: center;
+  padding: 16px 22px; font-size: 16px; line-height: 1.6; color: var(--oqq-ocean);
+  max-width: 680px; margin: 20px auto 8px; text-align: center;
 }
 .oqq-fallback-note {
-  color: var(--oqq-ocean); font-size: 14.5px; text-align: center;
-  max-width: 620px; margin: 10px auto 0;
+  color: var(--oqq-ocean); font-size: 16px; text-align: center;
+  max-width: 680px; margin: 10px auto 0;
 }
 .oqq-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 18px; margin-top: 26px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+  gap: 22px; margin-top: 30px;
 }
 .oqq-card {
   background: #fff; border: 1px solid #e3e5f0; border-radius: 10px;
@@ -118,28 +120,28 @@
 .oqq-card:hover { box-shadow: 0 6px 18px rgba(15, 19, 90, .12); }
 .oqq-card-img { aspect-ratio: 1/1; background: var(--oqq-tint); }
 .oqq-card-img img { width: 100%; height: 100%; object-fit: cover; }
-.oqq-card-body { padding: 14px 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.oqq-card-title { font-family: var(--oqq-heading-font); font-size: 15.5px; font-weight: 700; line-height: 1.35; margin: 0; }
+.oqq-card-body { padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+.oqq-card-title { font-family: var(--oqq-heading-font); font-size: 17px; font-weight: 700; line-height: 1.35; margin: 0; }
 .oqq-card-title a { color: var(--oqq-indigo); text-decoration: none; }
 .oqq-card-title a:hover { color: var(--oqq-indigo-light); }
 .oqq-badges { display: flex; flex-wrap: wrap; gap: 5px; }
 .oqq-badge {
-  font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
   background: var(--oqq-tint); color: var(--oqq-indigo-light);
   border: 1px solid #d9dcec; border-radius: 4px; padding: 3px 7px;
 }
 .oqq-badge--hot { background: var(--oqq-salmon); color: #fff; border-color: var(--oqq-salmon); }
 .oqq-method-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .oqq-method-chip {
-  font-size: 11.5px; font-weight: 700; color: var(--oqq-ocean);
-  border: 1px solid var(--oqq-teal); border-radius: 999px; padding: 3px 9px;
+  font-size: 12.5px; font-weight: 700; color: var(--oqq-ocean);
+  border: 1px solid var(--oqq-teal); border-radius: 999px; padding: 4px 10px;
   background: var(--oqq-teal-tint);
 }
-.oqq-price { font-size: 16px; font-weight: 800; color: var(--oqq-indigo); }
+.oqq-price { font-size: 18px; font-weight: 800; color: var(--oqq-indigo); }
 .oqq-sizes { display: flex; flex-wrap: wrap; gap: 6px; }
 .oqq-size-btn {
-  padding: 6px 12px; border-radius: 5px; border: 1.5px solid #c9cde0;
-  background: #fff; font-size: 13px; font-weight: 600; color: #4a4d70; position: relative;
+  padding: 8px 14px; border-radius: 5px; border: 1.5px solid #c9cde0;
+  background: #fff; font-size: 14px; font-weight: 600; color: #4a4d70; position: relative;
 }
 .oqq-size-btn[aria-pressed="true"] { border-color: var(--oqq-indigo); background: var(--oqq-indigo); color: #fff; }
 .oqq-size-btn:disabled { opacity: .38; cursor: not-allowed; text-decoration: line-through; }
@@ -149,17 +151,17 @@
 }
 .oqq-size-btn[aria-pressed="true"] .oqq-size-rec { color: var(--oqq-teal); }
 .oqq-atc {
-  margin-top: auto; width: 100%; padding: 12px 10px;
+  margin-top: auto; width: 100%; padding: 14px 10px;
   background: var(--oqq-indigo); color: #fff; border: 0; border-radius: 6px;
   font-family: var(--oqq-heading-font);
-  font-size: 13.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  font-size: 14.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   text-align: center; text-decoration: none; display: inline-block;
 }
 .oqq-atc:hover { background: var(--oqq-indigo-light); }
 .oqq-atc[data-state="added"] { background: var(--oqq-ocean); }
 .oqq-atc:disabled { background: #b9bdd6; cursor: not-allowed; }
 .oqq-card-links { text-align: center; }
-.oqq-card-links a { font-size: 13px; color: var(--oqq-indigo-light); text-decoration: underline; }
+.oqq-card-links a { font-size: 14px; color: var(--oqq-indigo-light); text-decoration: underline; }
 .oqq-card-links a:hover { color: var(--oqq-indigo); }
 
 /* ---- states ---- */
@@ -171,8 +173,19 @@
 }
 @keyframes oqq-spin { to { transform: rotate(360deg); } }
 
-@media (max-width: 560px) {
-  .oqq { padding: 16px 10px 40px; }
-  .oqq-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-  .oqq-card-body { padding: 10px 10px 12px; }
+@media (max-width: 640px) {
+  .oqq { padding: 20px 12px 48px; font-size: 16px; }
+  .oqq-title { font-size: clamp(24px, 6.5vw, 30px); }
+  .oqq-intro-text { font-size: 17px; }
+  .oqq-choice { padding: 15px 18px; min-height: 54px; font-size: 16.5px; }
+  .oqq-cta { width: 100%; max-width: 420px; padding: 16px 20px; }
+  .oqq-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .oqq-card-body { padding: 11px 11px 13px; gap: 7px; }
+  .oqq-card-title { font-size: 15px; }
+  .oqq-size-btn { padding: 7px 10px; font-size: 13px; }
+  .oqq-atc { padding: 12px 8px; font-size: 13px; letter-spacing: .04em; }
+  .oqq-price { font-size: 16px; }
+}
+@media (max-width: 340px) {
+  .oqq-grid { grid-template-columns: 1fr; max-width: 300px; margin-left: auto; margin-right: auto; }
 }
