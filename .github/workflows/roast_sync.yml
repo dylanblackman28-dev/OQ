@@ -15,6 +15,15 @@ on:
     # Friday 6:30am AEST = Thursday 20:30 UTC
     - cron: '30 20 * * 4'
   workflow_dispatch:
+    inputs:
+      backfill_weeks:
+        description: 'Extra past weeks to re-sync (0 = normal run)'
+        required: false
+        default: '0'
+      backfill_offset:
+        description: 'Skip this many recent weeks (for chunked backfills)'
+        required: false
+        default: '0'
 
 jobs:
   sync:
@@ -37,4 +46,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OM_USERNAME: ${{ secrets.OM_USERNAME }}
           OM_PASSWORD: ${{ secrets.OM_PASSWORD }}
+          BACKFILL_WEEKS: ${{ inputs.backfill_weeks || '0' }}
+          BACKFILL_OFFSET: ${{ inputs.backfill_offset || '0' }}
         run: python scripts/roast_sync.py

@@ -21,6 +21,16 @@ OQ_VENUES = [
     "oq southport", "oq coolangatta", "oq murbah"
 ]
 
+# Cold brew variants, measured in LITRES (not kg).
+# SKU -> (qty db field, litres per unit)
+CB_VARIANTS = {
+    "OQ-CLD-BR-1LT":   ("cb_1lt_qty",        1.0),
+    "OQ-CLD-BR-5LT":   ("cb_5lt_qty",        5.0),
+    "OQ-CLD-BR-330ML": ("cb_330ml_qty",      0.33),
+    "OQ-CLD-BR-20LT":  ("cb_nitro_20lt_qty", 20.0),  # Nitro — OQ Ballina summer
+    "OQ-CLD-BR-10LT":  ("cb_nitro_10lt_qty", 10.0),  # Nitro — OQ Ballina winter
+}
+
 def om_auth():
     data = json.dumps({"username": OM_USERNAME, "password": OM_PASSWORD}).encode()
     req = urllib.request.Request("https://app.ordermentum.com/v1/auth", data=data,
@@ -117,6 +127,8 @@ def sync_week(token, sb, weeks_ago):
 
     print(f"  Processing line items...")
     totals = defaultdict(float)
+    cb_qty = defaultdict(float)
+    cold_brew_litres = 0.0
     order_count = 0
     rising_sun_dates = []
 
@@ -126,6 +138,13 @@ def sync_week(token, sb, weeks_ago):
         detail = om_get(f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
         order_has_rising_sun = False
         for item in detail.get("lineItems", []):
+            sku = (item.get("SKU", "") or "").upper()
+            if sku in CB_VARIANTS:
+                qty_field, litres_per_unit = CB_VARIANTS[sku]
+                q = float(item.get("quantity", 0) or 0)
+                cb_qty[qty_field] += q
+                cold_brew_litres += q * litres_per_unit
+                continue
             field = classify(item.get("name", ""), item.get("SKU", ""))
             if not field: continue
             kg = extract_kg(item.get("name", ""), item.get("quantity", 0) or 0)
@@ -161,6 +180,12 @@ def sync_week(token, sb, weeks_ago):
         "total_orders":     order_count,
         "rising_sun_order_count": len(rising_sun_dates),
         "rising_sun_order_dates": ", ".join(rising_sun_dates),
+        "cb_1lt_qty":        round(cb_qty.get("cb_1lt_qty", 0), 2),
+        "cb_5lt_qty":        round(cb_qty.get("cb_5lt_qty", 0), 2),
+        "cb_330ml_qty":      round(cb_qty.get("cb_330ml_qty", 0), 2),
+        "cb_nitro_10lt_qty": round(cb_qty.get("cb_nitro_10lt_qty", 0), 2),
+        "cb_nitro_20lt_qty": round(cb_qty.get("cb_nitro_20lt_qty", 0), 2),
+        "cold_brew_litres":  round(cold_brew_litres, 2),
         "updated_at":       datetime.now(timezone.utc).isoformat(),
     }, on_conflict="week_start").execute()
 
@@ -168,8 +193,14 @@ def sync_week(token, sb, weeks_ago):
 
 
 def main():
+    backfill_weeks = int(os.environ.get("BACKFILL_WEEKS", "0") or 0)
+    backfill_offset = int(os.environ.get("BACKFILL_OFFSET", "0") or 0)
+
     print("=" * 55)
     print(f"OQ Roast Sync — {datetime.now(AEST).strftime('%A %d %B %Y %I:%M %p AEST')}")
+    if backfill_weeks or backfill_offset:
+        print(f"BACKFILL MODE: weeks {backfill_offset} to "
+              f"{backfill_offset + backfill_weeks} ago")
     print("=" * 55)
 
     print("\n[1/3] Authenticating...")
@@ -178,8 +209,14 @@ def main():
 
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-    print("\n[2/3] Syncing previous week (late orders) + current open week...")
-    for weeks_ago in (1, 0):
+    print("\n[2/3] Syncing week(s)...")
+    if backfill_weeks or backfill_offset:
+        week_offsets = range(backfill_offset + backfill_weeks,
+                             backfill_offset - 1, -1)
+    else:
+        # Normal run: previous week (late orders) + current open week
+        week_offsets = (1, 0)
+    for weeks_ago in week_offsets:
         sync_week(token, sb, weeks_ago)
 
     # Write sync timestamp so dashboard can show "last updated by workflow"

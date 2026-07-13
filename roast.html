@@ -163,6 +163,14 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
     Retail bags (OQ-COF-RT) are excluded from all venue figures. Rising Sun Roasters is contract roasting, tracked separately from wholesale.
   </div>
 
+  <!-- COLD BREW -->
+  <div class="section-hd"><span class="section-title">Cold Brew</span><div class="section-line"></div></div>
+  <div class="blend-grid" id="coldbrew-grid"></div>
+  <div style="font-size:.72rem;color:var(--muted);line-height:1.6;margin:-1rem 0 2rem;padding:.6rem 1rem;background:rgba(15,19,90,.03);border-radius:8px">
+    Cold brew is measured in <strong>litres</strong>, separate from coffee kg. Total litres = all variants combined (same brew).
+    Nitro buckets are OQ Ballina only.
+  </div>
+
   <!-- TREND CHART -->
   <div class="section-hd"><span class="section-title">12-Week Trend</span><div class="section-line"></div></div>
   <div class="chart-card">
@@ -181,7 +189,8 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
         <th>Decaf</th><th>K'Ho</th>
         <th>Rising Sun</th>
         <th>Venue Milk</th><th>Venue Black</th>
-        <th>Total</th><th>WoW</th><th title="Weekly total vs the same period last year (±2wk avg)">YoY</th>
+        <th title="Cold brew litres — separate from coffee kg">Cold Brew</th>
+        <th title="Coffee kg only, excludes cold brew">Total</th><th>WoW</th><th title="Weekly total vs the same period last year (±2wk avg)">YoY</th>
       </tr></thead>
       <tbody id="history-body"></tbody>
     </table>
@@ -325,6 +334,45 @@ function renderBlendCards(row, prev, blends, containerId) {
   }).join('');
 }
 
+const CB_VARIANTS = [
+  {qty:'cb_1lt_qty',        label:'1L Glass Bottles',        lpu:1,    color:'#46c4dc', note:''},
+  {qty:'cb_5lt_qty',        label:'5L Swap & Refill Buckets', lpu:5,   color:'#61bb4b', note:''},
+  {qty:'cb_330ml_qty',      label:'330ml Glass Bottles',     lpu:0.33, color:'#e0c23a', note:''},
+  {qty:'cb_nitro_20lt_qty', label:'20L Nitro Buckets',       lpu:20,   color:'#f4932b', note:'Ballina · summer'},
+  {qty:'cb_nitro_10lt_qty', label:'10L Nitro Buckets',       lpu:10,   color:'#824e9f', note:'Ballina · winter'},
+];
+const fmtL = n => (+n||0).toFixed(1).replace(/\.0$/,'') + 'L';
+
+function renderColdBrew(row, prev) {
+  const el = document.getElementById('coldbrew-grid');
+  const total = +(row.cold_brew_litres||0);
+  const prevTotal = +(prev.cold_brew_litres||0);
+  const pct = prevTotal ? (total-prevTotal)/prevTotal*100 : null;
+  const cls = pct !== null ? (pct>5?'trend-up':pct<-5?'trend-down':'trend-flat') : 'trend-flat';
+  const arrow = pct !== null ? (pct>5?'↑':pct<-5?'↓':'→') : '';
+
+  const totalCard = `<div class="blend-card" style="border-top:4px solid var(--indigo)">
+    <div class="blend-name">Total Litres to Brew</div>
+    <div class="blend-kg" style="color:var(--indigo)">${fmtL(total)}</div>
+    <div class="blend-meta">
+      ${pct !== null ? `<span class="blend-wow ${cls}">${arrow} ${Math.abs(pct).toFixed(0)}% WoW</span>` : '<span class="blend-avg">—</span>'}
+      <span class="blend-avg">all variants, same brew</span>
+    </div>
+  </div>`;
+
+  const variantCards = CB_VARIANTS.map(v => {
+    const q = +(row[v.qty]||0);
+    const litres = q * v.lpu;
+    return `<div class="blend-card" style="border-top:4px solid ${v.color}">
+      <div class="blend-name">${v.label}${v.note ? `<span style="font-weight:400;margin-left:.5rem;opacity:.6">${v.note}</span>` : ''}</div>
+      <div class="blend-kg" style="color:${v.color}">${q % 1 === 0 ? q : q.toFixed(1)}<span style="font-size:1rem;font-weight:500;color:var(--muted)"> ordered</span></div>
+      <div class="blend-meta"><span class="blend-avg">= ${fmtL(litres)}</span></div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = totalCard + variantCards;
+}
+
 function drawTrend() {
   const last12 = weeks.slice(0,12).reverse();
   const svgEl = document.getElementById('trend-svg');
@@ -405,6 +453,7 @@ function renderHistory() {
       <td>${fmtKgShort(row.rising_sun_kg||0)}</td>
       <td>${fmtKgShort(row.venue_milk_kg||0)}</td>
       <td>${fmtKgShort(row.venue_black_kg||0)}</td>
+      <td>${fmtL(row.cold_brew_litres||0)}</td>
       <td style="font-weight:600">${fmtKgShort(total)}</td>
       <td class="${cls}">${pct!==null?`${arrow} ${Math.abs(pct).toFixed(0)}%`:'—'}</td>
       <td class="${yoyCls}" title="${yoyTitle}">${yoyPct!==null?`${yoyArrow} ${Math.abs(yoyPct).toFixed(0)}%`:'—'}</td>
@@ -419,6 +468,7 @@ function renderAll() {
   renderScorecard(row, prev);
   renderBlendCards(row, prev, BLENDS, 'blend-grid');
   renderBlendCards(row, prev, OTHER, 'other-grid');
+  renderColdBrew(row, prev);
   drawTrend();
   renderHistory();
 }
