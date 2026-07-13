@@ -177,8 +177,7 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
     </table>
   </div>
 
-  <div class="section-hd"><span class="section-title">Partner Deep Dive</span><div class="section-line"></div></div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:2rem" id="partner-cards"></div>
+  <div id="partner-cards" style="margin-bottom:2rem"></div>
 </main>
 
 <!-- Modal -->
@@ -445,18 +444,54 @@ function renderTable(data) {
   }).join('');
 }
 
+function partnerStatus(p, week) {
+  const wo = week.find(w => w.partner_id === p.id);
+  if (!wo || +wo.kg_ordered <= 0) return { status: 'none', kg: 0, wo: null };
+  if (+wo.late_order_count > 0) return { status: 'late', kg: +wo.kg_ordered, wo };
+  return { status: 'ordered', kg: +wo.kg_ordered, wo };
+}
+
 function renderPartnerCards() {
   const el = document.getElementById('partner-cards');
   const week = getWeekData(currentWeek);
-  el.innerHTML = allPartners.map(p => {
-    const wo = week.find(w => w.partner_id === p.id);
-    const s = summaryById(p.id);
-    const kg = wo ? +wo.kg_ordered : 0;
-    return `<div onclick="openModal('${p.id}')" style="background:#fff;border-radius:10px;border:1.5px solid var(--border);padding:1rem;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--arctic)'" onmouseout="this.style.borderColor='var(--border)'">
-      <div style="font-size:.75rem;font-weight:600;margin-bottom:.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
-      <div style="font-size:1.25rem;font-weight:700;color:${kg>0?'var(--indigo)':'var(--muted)'}">${fmtKg(kg)}</div>
-      <div style="font-size:.65rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:.25rem">LTV ${s.ltv ? fmt(s.ltv) : '—'}</div>
-    </div>`;
+
+  const CATEGORIES = [
+    { key: 'Cafe',         title: 'Partner Deep Dive — Cafe Partners' },
+    { key: 'Other Heroes', title: 'Partner Deep Dive — Other Heroes' },
+  ];
+  const STATUS_META = {
+    ordered: { chip: '<span class="badge badge-ok">✓ Ordered</span>',  border: 'var(--apple)' },
+    late:    { chip: '<span class="badge badge-late">⚑ Ordered late</span>', border: 'var(--coral)' },
+    none:    { chip: '<span class="badge" style="background:rgba(139,143,168,.12);color:var(--muted)">No order</span>', border: 'var(--border)' },
+  };
+  const ORDER = { ordered: 0, late: 1, none: 2 };
+
+  el.innerHTML = CATEGORIES.map(cat => {
+    const members = allPartners
+      .filter(p => (p.category || 'Cafe') === cat.key)
+      .map(p => ({ p, ...partnerStatus(p, week) }))
+      .sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.kg - a.kg || a.p.name.localeCompare(b.p.name));
+
+    const counts = { ordered: 0, late: 0, none: 0 };
+    members.forEach(m => counts[m.status]++);
+
+    const cards = members.map(m => {
+      const s = summaryById(m.p.id);
+      const meta = STATUS_META[m.status];
+      const dim = m.status === 'none';
+      return `<div onclick="openModal('${m.p.id}')" style="background:#fff;border-radius:10px;border:1.5px solid var(--border);border-top:3px solid ${meta.border};padding:1rem;cursor:pointer;transition:border-color .15s;${dim ? 'opacity:.75' : ''}" onmouseover="this.style.borderColor='var(--arctic)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:.75rem;font-weight:600;margin-bottom:.4rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.p.name}</div>
+        <div style="margin-bottom:.45rem">${meta.chip}</div>
+        <div style="font-size:1.25rem;font-weight:700;color:${m.kg > 0 ? 'var(--indigo)' : 'var(--muted)'}">${m.kg > 0 ? fmtKg(m.kg) : '—'}</div>
+        <div style="font-size:.65rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:.25rem">LTV ${s.ltv ? fmt(s.ltv) : '—'}</div>
+      </div>`;
+    }).join('');
+
+    return `
+      <div class="section-hd"><span class="section-title">${cat.title}</span><div class="section-line"></div>
+        <span style="font-size:.68rem;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap">${counts.ordered} ordered · ${counts.late} late · ${counts.none} no order</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1.5rem">${cards || '<div class="empty">No partners in this category</div>'}</div>`;
   }).join('');
 }
 
