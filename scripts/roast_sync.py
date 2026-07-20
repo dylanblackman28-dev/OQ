@@ -137,11 +137,16 @@ def sync_week(token, sb, weeks_ago):
         order_count += 1
         detail = om_get(f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
         order_has_rising_sun = False
+        retailer_name = order.get("retailerName", "") or ""
         for item in detail.get("lineItems", []):
             sku = (item.get("SKU", "") or "").upper()
             if sku in CB_VARIANTS:
                 qty_field, litres_per_unit = CB_VARIANTS[sku]
                 q = float(item.get("quantity", 0) or 0)
+                # Venue orders of bottle/bucket variants tracked separately
+                # (nitro is already its own field — always Ballina)
+                if "nitro" not in qty_field and is_venue_order(retailer_name):
+                    qty_field = qty_field.replace("cb_", "cb_venue_")
                 cb_qty[qty_field] += q
                 cold_brew_litres += q * litres_per_unit
                 continue
@@ -183,6 +188,9 @@ def sync_week(token, sb, weeks_ago):
         "cb_1lt_qty":        round(cb_qty.get("cb_1lt_qty", 0), 2),
         "cb_5lt_qty":        round(cb_qty.get("cb_5lt_qty", 0), 2),
         "cb_330ml_qty":      round(cb_qty.get("cb_330ml_qty", 0), 2),
+        "cb_venue_1lt_qty":   round(cb_qty.get("cb_venue_1lt_qty", 0), 2),
+        "cb_venue_5lt_qty":   round(cb_qty.get("cb_venue_5lt_qty", 0), 2),
+        "cb_venue_330ml_qty": round(cb_qty.get("cb_venue_330ml_qty", 0), 2),
         "cb_nitro_10lt_qty": round(cb_qty.get("cb_nitro_10lt_qty", 0), 2),
         "cb_nitro_20lt_qty": round(cb_qty.get("cb_nitro_20lt_qty", 0), 2),
         "cold_brew_litres":  round(cold_brew_litres, 2),

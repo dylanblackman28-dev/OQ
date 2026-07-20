@@ -2,14 +2,13 @@ name: OQ Wholesale Weekly Sync
 
 on:
   schedule:
-    # Monday 6:30am AEST = Sunday 20:30 UTC
-    - cron: '30 20 * * 0'
-    # Tuesday 6:30am AEST = Monday 20:30 UTC
-    - cron: '30 20 * * 1'
-    # Tuesday 12:15pm AEST = Tuesday 02:15 UTC
-    - cron: '15 2 * * 2'
-    # Tuesday 12:45pm AEST = Tuesday 02:45 UTC (backup)
-    - cron: '45 2 * * 2'
+    # Mon & Tue every 30 min, 6:00am-1:00pm AEST (order-heavy window):
+    # Mon/Tue 6:00-9:30am AEST = Sun/Mon 20:00-23:30 UTC
+    - cron: '*/30 20-23 * * 0,1'
+    # Mon/Tue 10:00am-12:30pm AEST = Mon/Tue 00:00-02:30 UTC
+    - cron: '*/30 0-2 * * 1,2'
+    # Mon/Tue 1:00pm AEST = Mon/Tue 03:00 UTC
+    - cron: '0 3 * * 1,2'
     # Wednesday 6:30am AEST = Tuesday 20:30 UTC
     - cron: '30 20 * * 2'
     # Friday 6:30am AEST = Thursday 20:30 UTC

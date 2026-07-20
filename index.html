@@ -19,6 +19,9 @@ header{background:var(--indigo);padding:0 2rem;display:flex;align-items:center;j
 .header-right{display:flex;align-items:center;gap:1.5rem}
 #last-updated{font-size:.72rem;color:var(--arctic);font-family:'DM Mono',monospace;opacity:.8}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--apple);box-shadow:0 0 6px var(--apple)}
+#refresh-btn{background:transparent;border:1px solid var(--arctic);color:var(--arctic);border-radius:6px;padding:.32rem .75rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;transition:all .15s;white-space:nowrap}
+#refresh-btn:hover:not(:disabled){background:var(--arctic);color:var(--indigo)}
+#refresh-btn:disabled{opacity:.6;cursor:default}
 #loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 64px);gap:1rem}
 .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--arctic);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -109,6 +112,7 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 <header>
   <div class="logo">OLD QTR <span>/</span> Wholesale Partner Order Analytics</div>
   <div class="header-right">
+    <button id="refresh-btn" onclick="manualRefresh()" title="Pull the latest orders from Ordermentum right now (~2 min)">⟳ Update now</button>
     <span id="last-updated">Loading...</span>
     <div class="dot"></div>
   </div>
@@ -601,6 +605,33 @@ async function init() {
 }
 
 init();
+
+// ─── MANUAL REFRESH ──────────────────────────────────────────────────────────
+async function manualRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  const started = Date.now();
+  btn.disabled = true;
+  btn.textContent = 'Requesting…';
+  const H2 = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
+  const reset = (label) => { btn.textContent = label; setTimeout(() => { btn.disabled = false; btn.textContent = '⟳ Update now'; }, 5000); };
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/trigger-sync`, { method: 'POST', headers: H2 });
+    const j = await r.json();
+    if (r.status === 429) { reset(`Just updated — wait ${j.retry_in_s}s`); return; }
+    if (!j.ok) { reset('Failed — try again'); return; }
+    btn.textContent = 'Syncing… (~2 min)';
+    const poll = setInterval(async () => {
+      try {
+        const d = await (await fetch(`${SUPABASE_URL}/rest/v1/sync_log?id=eq.wholesale&select=last_synced_at`, { headers: H2 })).json();
+        if (d[0] && new Date(d[0].last_synced_at).getTime() > started) {
+          clearInterval(poll);
+          location.reload();
+        }
+      } catch (e) {}
+    }, 15000);
+    setTimeout(() => clearInterval(poll), 10 * 60 * 1000); // stop polling after 10 min
+  } catch (e) { reset('Failed — try again'); }
+}
 </script>
 </body>
 </html>

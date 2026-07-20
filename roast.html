@@ -22,6 +22,9 @@ header{background:var(--indigo);padding:0 2rem;display:flex;align-items:center;j
 .header-right{display:flex;align-items:center;gap:1.5rem}
 #last-updated{font-size:.72rem;color:var(--arctic);font-family:'DM Mono',monospace;opacity:.8}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--apple);box-shadow:0 0 6px var(--apple)}
+#refresh-btn{background:transparent;border:1px solid var(--arctic);color:var(--arctic);border-radius:6px;padding:.32rem .75rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;transition:all .15s;white-space:nowrap}
+#refresh-btn:hover:not(:disabled){background:var(--arctic);color:var(--indigo)}
+#refresh-btn:disabled{opacity:.6;cursor:default}
 
 /* LOADING */
 #loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 64px);gap:1rem}
@@ -107,6 +110,7 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 <header>
   <div class="logo">OLD QTR <span>/</span> Kilos Ordered Tracker</div>
   <div class="header-right">
+    <button id="refresh-btn" onclick="manualRefresh()" title="Pull the latest orders from Ordermentum right now (~2 min)">⟳ Update now</button>
     <span id="last-updated">Loading...</span>
     <div class="dot"></div>
   </div>
@@ -167,8 +171,9 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
   <div class="section-hd"><span class="section-title">Cold Brew</span><div class="section-line"></div></div>
   <div class="blend-grid" id="coldbrew-grid"></div>
   <div style="font-size:.72rem;color:var(--muted);line-height:1.6;margin:-1rem 0 2rem;padding:.6rem 1rem;background:rgba(15,19,90,.03);border-radius:8px">
-    Cold brew is measured in <strong>litres</strong>, separate from coffee kg. Total litres = all variants combined (same brew).
-    Nitro buckets are OQ Ballina only.
+    Cold brew is measured in <strong>litres</strong>, separate from coffee kg. Total litres = wholesale + venues + nitro combined (same brew).
+    Venue rows count OQ venue orders of the same bottle/bucket SKUs. Nitro buckets are OQ Ballina only.
+    Cold brew <em>beans</em> (Mae Chedi "Cold Brew Release", retail ground) and Toddy filters are not brewed litres and are excluded.
   </div>
 
   <!-- TREND CHART -->
@@ -334,13 +339,24 @@ function renderBlendCards(row, prev, blends, containerId) {
   }).join('');
 }
 
-const CB_VARIANTS = [
-  {qty:'cb_1lt_qty',        label:'1L Glass Bottles',        lpu:1,    color:'#46c4dc', note:''},
-  {qty:'cb_5lt_qty',        label:'5L Swap & Refill Buckets', lpu:5,   color:'#61bb4b', note:''},
-  {qty:'cb_330ml_qty',      label:'330ml Glass Bottles',     lpu:0.33, color:'#e0c23a', note:''},
-  {qty:'cb_nitro_20lt_qty', label:'20L Nitro Buckets',       lpu:20,   color:'#f4932b', note:'Ballina · summer'},
-  {qty:'cb_nitro_10lt_qty', label:'10L Nitro Buckets',       lpu:10,   color:'#824e9f', note:'Ballina · winter'},
+const CB_GROUPS = [
+  { title: 'Wholesale', variants: [
+    {qty:'cb_1lt_qty',   label:'1L Glass Bottles',         lpu:1,    color:'#46c4dc'},
+    {qty:'cb_5lt_qty',   label:'5L Swap & Refill Buckets', lpu:5,    color:'#61bb4b'},
+    {qty:'cb_330ml_qty', label:'330ml Glass Bottles',      lpu:0.33, color:'#e0c23a'},
+  ]},
+  { title: 'Venues', variants: [
+    {qty:'cb_venue_1lt_qty',   label:'1L Glass Bottles',         lpu:1,    color:'#46c4dc'},
+    {qty:'cb_venue_5lt_qty',   label:'5L Swap & Refill Buckets', lpu:5,    color:'#61bb4b'},
+    {qty:'cb_venue_330ml_qty', label:'330ml Glass Bottles',      lpu:0.33, color:'#e0c23a'},
+  ]},
+  { title: 'Ballina — Nitro', variants: [
+    {qty:'cb_nitro_10lt_qty', label:'10L Nitro Buckets', lpu:10, color:'#824e9f', note:'winter'},
+    {qty:'cb_nitro_20lt_qty', label:'20L Nitro Buckets', lpu:20, color:'#f4932b', note:'summer'},
+  ]},
 ];
+// All cold brew qty fields, for group litre subtotals
+const CB_ALL = CB_GROUPS.flatMap(g => g.variants);
 const fmtL = n => (+n||0).toFixed(1).replace(/\.0$/,'') + 'L';
 
 function renderColdBrew(row, prev) {
@@ -351,26 +367,35 @@ function renderColdBrew(row, prev) {
   const cls = pct !== null ? (pct>5?'trend-up':pct<-5?'trend-down':'trend-flat') : 'trend-flat';
   const arrow = pct !== null ? (pct>5?'↑':pct<-5?'↓':'→') : '';
 
-  const totalCard = `<div class="blend-card" style="border-top:4px solid var(--indigo)">
-    <div class="blend-name">Total Litres to Brew</div>
-    <div class="blend-kg" style="color:var(--indigo)">${fmtL(total)}</div>
-    <div class="blend-meta">
-      ${pct !== null ? `<span class="blend-wow ${cls}">${arrow} ${Math.abs(pct).toFixed(0)}% WoW</span>` : '<span class="blend-avg">—</span>'}
-      <span class="blend-avg">all variants, same brew</span>
+  const totalCard = `<div class="blend-card" style="border-top:4px solid var(--indigo);grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+    <div>
+      <div class="blend-name">Total Litres to Brew</div>
+      <div class="blend-kg" style="color:var(--indigo)">${fmtL(total)}</div>
+    </div>
+    <div class="blend-meta" style="flex-direction:column;align-items:flex-end;gap:.2rem">
+      ${pct !== null ? `<span class="blend-wow ${cls}">${arrow} ${Math.abs(pct).toFixed(0)}% WoW</span>` : ''}
+      <span class="blend-avg">wholesale + venues + nitro, same brew</span>
     </div>
   </div>`;
 
-  const variantCards = CB_VARIANTS.map(v => {
-    const q = +(row[v.qty]||0);
-    const litres = q * v.lpu;
-    return `<div class="blend-card" style="border-top:4px solid ${v.color}">
-      <div class="blend-name">${v.label}${v.note ? `<span style="font-weight:400;margin-left:.5rem;opacity:.6">${v.note}</span>` : ''}</div>
-      <div class="blend-kg" style="color:${v.color}">${q % 1 === 0 ? q : q.toFixed(1)}<span style="font-size:1rem;font-weight:500;color:var(--muted)"> ordered</span></div>
-      <div class="blend-meta"><span class="blend-avg">= ${fmtL(litres)}</span></div>
-    </div>`;
+  const groups = CB_GROUPS.map(g => {
+    const groupLitres = g.variants.reduce((s,v) => s + +(row[v.qty]||0) * v.lpu, 0);
+    const cards = g.variants.map(v => {
+      const q = +(row[v.qty]||0);
+      return `<div class="blend-card" style="border-top:4px solid ${v.color}">
+        <div class="blend-name">${v.label}${v.note ? `<span style="font-weight:400;margin-left:.5rem;opacity:.6">${v.note}</span>` : ''}</div>
+        <div class="blend-kg" style="color:${q > 0 ? v.color : 'var(--border)'}">${q % 1 === 0 ? q : q.toFixed(1)}<span style="font-size:1rem;font-weight:500;color:var(--muted)"> ordered</span></div>
+        <div class="blend-meta"><span class="blend-avg">= ${fmtL(q * v.lpu)}</span></div>
+      </div>`;
+    }).join('');
+    return `<div style="grid-column:1/-1;display:flex;align-items:baseline;gap:.75rem;margin-top:.25rem">
+      <span style="font-size:.66rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">${g.title}</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:.7rem;font-family:'DM Mono',monospace;color:var(--indigo);font-weight:600">${fmtL(groupLitres)}</span>
+    </div>${cards}`;
   }).join('');
 
-  el.innerHTML = totalCard + variantCards;
+  el.innerHTML = totalCard + groups;
 }
 
 function drawTrend() {
@@ -524,6 +549,33 @@ async function init() {
 }
 
 init();
+
+// ─── MANUAL REFRESH ──────────────────────────────────────────────────────────
+async function manualRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  const started = Date.now();
+  btn.disabled = true;
+  btn.textContent = 'Requesting…';
+  const H2 = { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` };
+  const reset = (label) => { btn.textContent = label; setTimeout(() => { btn.disabled = false; btn.textContent = '⟳ Update now'; }, 5000); };
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/trigger-sync`, { method: 'POST', headers: H2 });
+    const j = await r.json();
+    if (r.status === 429) { reset(`Just updated — wait ${j.retry_in_s}s`); return; }
+    if (!j.ok) { reset('Failed — try again'); return; }
+    btn.textContent = 'Syncing… (~2 min)';
+    const poll = setInterval(async () => {
+      try {
+        const d = await (await fetch(`${SUPABASE_URL}/rest/v1/sync_log?id=eq.roast&select=last_synced_at`, { headers: H2 })).json();
+        if (d[0] && new Date(d[0].last_synced_at).getTime() > started) {
+          clearInterval(poll);
+          location.reload();
+        }
+      } catch (e) {}
+    }, 15000);
+    setTimeout(() => clearInterval(poll), 10 * 60 * 1000); // stop polling after 10 min
+  } catch (e) { reset('Failed — try again'); }
+}
 </script>
 </body>
 </html>
