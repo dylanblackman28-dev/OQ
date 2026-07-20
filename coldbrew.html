@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OQ Cold Brew Tally</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --indigo:#0f135a;--indigo-tint:#19226d;--arctic:#46c4dc;--apple:#61bb4b;
+  --coral:#f0534b;--tawny:#e0c23a;--fire:#f4932b;--grape:#824e9f;
+  --white:#fff;--surface:#f4f5fb;--muted:#8b8fa8;--border:rgba(15,19,90,.1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Clash Grotesk',system-ui,sans-serif;background:var(--surface);color:var(--indigo);min-height:100vh}
+header{background:var(--indigo);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic)}
+.logo{font-size:.7rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:#fff}
+.logo span{color:var(--arctic)}
+.header-right{display:flex;align-items:center;gap:1.5rem}
+#last-updated{font-size:.72rem;color:var(--arctic);font-family:'DM Mono',monospace;opacity:.8}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--apple);box-shadow:0 0 6px var(--apple)}
+#refresh-btn{background:transparent;border:1px solid var(--arctic);color:var(--arctic);border-radius:6px;padding:.32rem .75rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;transition:all .15s;white-space:nowrap}
+#refresh-btn:hover:not(:disabled){background:var(--arctic);color:var(--indigo)}
+#refresh-btn:disabled{opacity:.6;cursor:default}
+#loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 64px);gap:1rem}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--arctic);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{font-size:.85rem;color:var(--muted)}
+main{max-width:1100px;margin:0 auto;padding:2rem;display:none}
+.week-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+.week-label{font-size:.72rem;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.week-selector{display:flex;gap:.5rem;flex-wrap:wrap}
+.week-btn{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:.4rem .75rem;font-size:.8rem;font-weight:500;color:var(--indigo);cursor:pointer;transition:all .15s;font-family:inherit}
+.week-btn:hover{border-color:var(--arctic);color:var(--arctic)}
+.week-btn.active{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.wip-badge{display:inline-flex;align-items:center;gap:.35rem;background:rgba(224,194,58,.15);color:#a08a00;border:1px solid rgba(224,194,58,.4);border-radius:20px;padding:.25rem .7rem;font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.wip-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--tawny);animation:wippulse 1.6s ease-in-out infinite}
+@keyframes wippulse{0%,100%{opacity:1}50%{opacity:.35}}
+.wip-pill{display:inline-block;background:var(--tawny);color:var(--indigo);font-size:.55rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.1rem .35rem;border-radius:3px;margin-left:.35rem;vertical-align:middle}
+.section-hd{display:flex;align-items:baseline;gap:.75rem;margin-bottom:1rem;margin-top:2rem}
+.section-title{font-size:.72rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--indigo)}
+.section-line{flex:1;height:1px;background:var(--border)}
+.section-note{font-size:.7rem;color:var(--muted)}
+/* BREW HERO */
+.brew-hero{background:var(--indigo);color:#fff;border-radius:14px;padding:1.75rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;border-bottom:3px solid var(--arctic)}
+.brew-label{font-size:.68rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--arctic);margin-bottom:.35rem}
+.brew-value{font-size:3rem;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
+.brew-sub{font-size:.75rem;color:rgba(255,255,255,.65);margin-top:.4rem}
+.brew-splits{display:flex;gap:2rem;flex-wrap:wrap}
+.brew-split{text-align:right}
+.bs-label{font-size:.62rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.bs-value{font-size:1.35rem;font-weight:700;font-family:'DM Mono',monospace}
+/* PACK TABLES */
+.pack-group{background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1rem}
+.pack-head{background:var(--indigo);color:#fff;padding:.6rem 1.25rem;display:flex;justify-content:space-between;align-items:center}
+.pack-title{font-size:.72rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase}
+.pack-litres{font-size:.78rem;font-family:'DM Mono',monospace;color:var(--arctic);font-weight:700}
+.pack-grid{display:grid}
+.pack-col{border-right:1px solid var(--border);padding:1rem 1.25rem;min-height:5.5rem}
+.pack-col:last-child{border-right:none}
+.pc-size{font-size:.66rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:.6rem}
+.pc-units{font-family:'DM Mono',monospace;color:var(--indigo)}
+.pc-entries{display:flex;flex-direction:column;gap:.3rem}
+.pc-entry{font-size:.95rem;font-weight:700;color:var(--indigo)}
+.pc-entry .q{font-family:'DM Mono',monospace;color:var(--grape)}
+.pc-empty{font-size:.78rem;color:var(--border);font-weight:600}
+/* DELIVERY */
+.deliv-group{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1.1rem 1.4rem;margin-bottom:1rem}
+.dg-title{font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
+.deliv-row{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.deliv-row:last-child{border-bottom:none}
+.deliv-name{font-size:.9rem;font-weight:700}
+.deliv-items{font-size:.85rem;font-family:'DM Mono',monospace;color:var(--indigo);text-align:right}
+.empty-msg{font-size:.8rem;color:var(--muted);padding:.5rem 0}
+/* UNKNOWN */
+.warn-box{background:rgba(240,83,75,.05);border:1.5px dashed var(--coral);border-radius:10px;padding:1rem 1.4rem;margin-top:1rem}
+.warn-title{font-size:.75rem;font-weight:700;color:var(--coral);margin-bottom:.5rem}
+.warn-row{font-size:.78rem;font-family:'DM Mono',monospace;color:var(--indigo);padding:.2rem 0}
+footer{text-align:center;padding:2rem;font-size:.67rem;color:var(--muted);letter-spacing:.05em}
+@media(max-width:800px){.pack-grid{grid-template-columns:1fr!important}.pack-col{border-right:none;border-bottom:1px solid var(--border)}.brew-value{font-size:2.2rem}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">OLD QTR <span>/</span> Cold Brew Tally</div>
+  <div class="header-right">
+    <button id="refresh-btn" onclick="manualRefresh()" title="Pull the latest orders from Ordermentum right now (~2 min)">⟳ Update now</button>
+    <span id="last-updated">Loading...</span>
+    <div class="dot"></div>
+  </div>
+</header>
+
+<div id="loading"><div class="spinner"></div><p>Pulling cold brew orders...</p></div>
+
+<main id="main">
+  <div class="week-bar">
+    <span class="week-label">Week Starting <span class="wip-badge" id="wip-badge" style="display:none;margin-left:.75rem">Week in progress</span></span>
+    <div class="week-selector" id="week-selector"></div>
+  </div>
+
+  <!-- 1. BREW -->
+  <div class="brew-hero" id="brew-hero"></div>
+
+  <!-- 2. PACK -->
+  <div class="section-hd"><span class="section-title">Packing — who ordered what</span><div class="section-line"></div><span class="section-note">bold entries = customer · qty</span></div>
+  <div id="pack-groups"></div>
+
+  <!-- 3. DELIVERY -->
+  <div class="section-hd"><span class="section-title">Delivery run guide</span><div class="section-line"></div><span class="section-note">cold delivery — pack last, cold storage route</span></div>
+  <div id="deliv-groups"></div>
+
+  <div id="warn-box-wrap"></div>
+</main>
+
+<footer>OQ Cold Brew Tally · Litres brewed at the warehouse only — bean bags &amp; equipment excluded · Data from Ordermentum</footer>
+
+<script>
+const SUPABASE_URL = 'https://poswbggoxhnayvvubpao.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvc3diZ2dveGhuYXl2dnVicGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjkxMTAsImV4cCI6MjA5NzA0NTExMH0.rT93P50Q8MyBT_6EvkLCW4XRL_vN8WzYmz3i6HZ_Z-0';
+const H = { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` };
+
+const SIZES = {
+  'OQ-CLD-BR-1LT':   { label: '1L Bottles',   litres: 1 },
+  'OQ-CLD-BR-5LT':   { label: '5L Buckets',   litres: 5 },
+  'OQ-CLD-BR-330ML': { label: '330ml Bottles', litres: 0.33 },
+  'OQ-CLD-BR-10LT':  { label: '10L Nitro (Winter)', litres: 10 },
+  'OQ-CLD-BR-20LT':  { label: '20L Nitro (Summer)', litres: 20 },
+};
+const PACK_GROUPS = [
+  { key:'wholesale', title:'Wholesale',      skus:['OQ-CLD-BR-1LT','OQ-CLD-BR-5LT','OQ-CLD-BR-330ML'] },
+  { key:'venue',     title:'Venues',         skus:['OQ-CLD-BR-1LT','OQ-CLD-BR-5LT','OQ-CLD-BR-330ML'] },
+  { key:'nitro',     title:'Ballina — Nitro',skus:['OQ-CLD-BR-10LT','OQ-CLD-BR-20LT'] },
+];
+
+// Local Delivery Wednesday run — from the Packing Day Priority Checklist.
+// Matched as lowercase fragments of the Ordermentum retailer name.
+const LOCAL_DELIVERY = [
+  'm|arts','m-arts','marts','tayzies','quick brown fox','bep','taco love',
+  'capiche','the dove','dent','bangalow bread','treehouse','bang bang',
+  'little byronian','williams','tintenbar','alstonville','winks','firewheel',
+  'bloe','north coast community',"bob's tacos",'bobs tacos','tokyo taco',
+  'kat harvey','raised','lehem'
+];
+function isLocalDelivery(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('tel aviv yafo')) return !n.includes('express'); // Yafo local, Express = Aramex
+  return LOCAL_DELIVERY.some(f => n.includes(f));
+}
+function shortName(name) {
+  return (name || '').replace(/^Old Quarter Coffee Merchants\s*-?\s*/i, 'OQ ').trim();
+}
+
+let allWeeks = [], currentWeek = null, weekRows = [], totalsByWeek = {};
+
+const fmtL = n => (+n||0).toFixed(1).replace(/\.0$/,'') + 'L';
+function weekLabel(d) {
+  const s = new Date(d+'T00:00:00'), e = new Date(s); e.setDate(e.getDate()+6);
+  const o = {day:'numeric',month:'short'};
+  return s.toLocaleDateString('en-AU',o)+' – '+e.toLocaleDateString('en-AU',o);
+}
+function isWeekInProgress(weekStart) {
+  return Date.now() < Date.parse(weekStart+'T12:00:00+10:00') + 7*24*3600*1000;
+}
+
+async function fetchRows(week) {
+  return await (await fetch(`${SUPABASE_URL}/rest/v1/cold_brew_orders?week_start=eq.${week}&select=*`, {headers:H})).json();
+}
+
+function renderWeekSelector() {
+  document.getElementById('week-selector').innerHTML = allWeeks.slice(0,8).map(w =>
+    `<button class="week-btn${w===currentWeek?' active':''}" onclick="selectWeek('${w}')">${weekLabel(w)}${isWeekInProgress(w)?'<span class="wip-pill">Live</span>':''}</button>`
+  ).join('');
+  document.getElementById('wip-badge').style.display = isWeekInProgress(currentWeek) ? 'inline-flex' : 'none';
+}
+
+function renderAll() {
+  const rows = weekRows.filter(r => r.category !== 'unknown');
+  const unknown = weekRows.filter(r => r.category === 'unknown');
+  const total = rows.reduce((s,r) => s + +r.litres, 0);
+  const catL = k => rows.filter(r => r.category===k).reduce((s,r) => s + +r.litres, 0);
+
+  // WoW vs previous week total (from roast_weekly)
+  const idx = allWeeks.indexOf(currentWeek);
+  const prevTotal = idx < allWeeks.length-1 ? +(totalsByWeek[allWeeks[idx+1]]||0) : 0;
+  const pct = prevTotal ? (total-prevTotal)/prevTotal*100 : null;
+
+  document.getElementById('brew-hero').innerHTML = `
+    <div>
+      <div class="brew-label">Total Litres to Brew</div>
+      <div class="brew-value">${fmtL(total)}</div>
+      <div class="brew-sub">brew ~24h ahead of packing${pct !== null ? ` · ${pct>=0?'↑':'↓'} ${Math.abs(pct).toFixed(0)}% vs last week` : ''}</div>
+    </div>
+    <div class="brew-splits">
+      <div class="brew-split"><div class="bs-label">Wholesale</div><div class="bs-value">${fmtL(catL('wholesale'))}</div></div>
+      <div class="brew-split"><div class="bs-label">Venues</div><div class="bs-value">${fmtL(catL('venue'))}</div></div>
+      <div class="brew-split"><div class="bs-label">Ballina Nitro</div><div class="bs-value">${fmtL(catL('nitro'))}</div></div>
+    </div>`;
+
+  // PACK: per group, per size, customer tallies (aggregate same customer+sku)
+  document.getElementById('pack-groups').innerHTML = PACK_GROUPS.map(g => {
+    const gRows = rows.filter(r => r.category === g.key);
+    const gLitres = gRows.reduce((s,r) => s + +r.litres, 0);
+    const cols = g.skus.map(sku => {
+      const sRows = gRows.filter(r => r.sku === sku);
+      const byName = {};
+      sRows.forEach(r => { const n = shortName(r.retailer_name); byName[n] = (byName[n]||0) + +r.qty; });
+      const units = Object.values(byName).reduce((a,b) => a+b, 0);
+      const entries = Object.entries(byName).sort((a,b) => b[1]-a[1])
+        .map(([n,q]) => `<div class="pc-entry">${n} <span class="q">– ${q%1===0?q:q.toFixed(1)}</span></div>`).join('');
+      return `<div class="pack-col">
+        <div class="pc-size"><span>${SIZES[sku].label}</span><span class="pc-units">${units%1===0?units:units.toFixed(1)} units</span></div>
+        <div class="pc-entries">${entries || '<span class="pc-empty">—</span>'}</div>
+      </div>`;
+    }).join('');
+    return `<div class="pack-group">
+      <div class="pack-head"><span class="pack-title">${g.title}</span><span class="pack-litres">${fmtL(gLitres)}</span></div>
+      <div class="pack-grid" style="grid-template-columns:repeat(${g.skus.length},1fr)">${cols}</div>
+    </div>`;
+  }).join('');
+
+  // DELIVERY: partner totals split local run / venues / courier
+  const byRetailer = {};
+  rows.forEach(r => {
+    const key = r.retailer_name;
+    if (!byRetailer[key]) byRetailer[key] = { name: key, category: r.category, items: {} };
+    const lbl = SIZES[r.sku] ? SIZES[r.sku].label : r.sku;
+    byRetailer[key].items[lbl] = (byRetailer[key].items[lbl]||0) + +r.qty;
+  });
+  const partners = Object.values(byRetailer);
+  const fmtItems = p => Object.entries(p.items).map(([l,q]) => `${q%1===0?q:q.toFixed(1)}× ${l}`).join(' · ');
+  const rowHtml = p => `<div class="deliv-row"><span class="deliv-name">${shortName(p.name)}</span><span class="deliv-items">${fmtItems(p)}</span></div>`;
+  const local   = partners.filter(p => p.category==='wholesale' && isLocalDelivery(p.name));
+  const courier = partners.filter(p => p.category==='wholesale' && !isLocalDelivery(p.name));
+  const venues  = partners.filter(p => p.category!=='wholesale');
+  document.getElementById('deliv-groups').innerHTML = `
+    <div class="deliv-group" style="border-left:4px solid var(--apple)">
+      <div class="dg-title">🚚 Local Delivery — Wednesday run</div>
+      ${local.map(rowHtml).join('') || '<div class="empty-msg">No cold brew on the local run this week</div>'}
+    </div>
+    <div class="deliv-group" style="border-left:4px solid var(--grape)">
+      <div class="dg-title">🏠 OQ Venues (incl. Ballina nitro — Tues/Wed tip run)</div>
+      ${venues.map(rowHtml).join('') || '<div class="empty-msg">No venue cold brew this week</div>'}
+    </div>
+    <div class="deliv-group" style="border-left:4px solid var(--fire)">
+      <div class="dg-title">📦 Couriers (TNT / Aramex / Couriers Please)</div>
+      ${courier.map(rowHtml).join('') || '<div class="empty-msg">No courier cold brew this week</div>'}
+    </div>`;
+
+  // UNKNOWN VARIANTS
+  document.getElementById('warn-box-wrap').innerHTML = unknown.length ? `
+    <div class="warn-box">
+      <div class="warn-title">⚠ Unmatched cold brew products this week — not counted in litres. Product names may have changed.</div>
+      ${unknown.map(r => `<div class="warn-row">${shortName(r.retailer_name)} | ${r.product_name} | qty ${+r.qty}</div>`).join('')}
+    </div>` : '';
+}
+
+async function selectWeek(w) {
+  currentWeek = w;
+  weekRows = await fetchRows(w);
+  renderWeekSelector();
+  renderAll();
+}
+
+async function init() {
+  try {
+    const [weeksRes, syncRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/roast_weekly?select=week_start,cold_brew_litres&order=week_start.desc&limit=12`, {headers:H}),
+      fetch(`${SUPABASE_URL}/rest/v1/sync_log?select=*&id=eq.roast`, {headers:H}),
+    ]);
+    const weeksData = await weeksRes.json();
+    allWeeks = weeksData.map(r => r.week_start);
+    weeksData.forEach(r => totalsByWeek[r.week_start] = r.cold_brew_litres);
+    currentWeek = allWeeks[0];
+    weekRows = await fetchRows(currentWeek);
+
+    const syncLog = await syncRes.json();
+    document.getElementById('last-updated').textContent = (syncLog[0] && syncLog[0].last_synced_at)
+      ? 'Last updated ' + new Date(syncLog[0].last_synced_at).toLocaleString('en-AU', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Australia/Brisbane'})
+      : 'Last updated —';
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+    renderWeekSelector();
+    renderAll();
+
+    let wasInProgress = isWeekInProgress(allWeeks[0]);
+    setInterval(() => {
+      const now = isWeekInProgress(allWeeks[0]);
+      if (now !== wasInProgress) { wasInProgress = now; renderWeekSelector(); renderAll(); }
+    }, 60000);
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `<p style="color:var(--coral)">Failed to load. ${e.message}</p>`;
+  }
+}
+
+async function manualRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  const started = Date.now();
+  btn.disabled = true;
+  btn.textContent = 'Requesting…';
+  const reset = (label) => { btn.textContent = label; setTimeout(() => { btn.disabled = false; btn.textContent = '⟳ Update now'; }, 5000); };
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/trigger-sync`, { method:'POST', headers:H });
+    const j = await r.json();
+    if (r.status === 429) { reset(`Just updated — wait ${j.retry_in_s}s`); return; }
+    if (!j.ok) { reset('Failed — try again'); return; }
+    btn.textContent = 'Syncing… (~2 min)';
+    const poll = setInterval(async () => {
+      try {
+        const d = await (await fetch(`${SUPABASE_URL}/rest/v1/sync_log?id=eq.roast&select=last_synced_at`, {headers:H})).json();
+        if (d[0] && new Date(d[0].last_synced_at).getTime() > started) { clearInterval(poll); location.reload(); }
+      } catch(e) {}
+    }, 15000);
+    setTimeout(() => clearInterval(poll), 10*60*1000);
+  } catch(e) { reset('Failed — try again'); }
+}
+
+init();
+</script>
+</body>
+</html>

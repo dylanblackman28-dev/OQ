@@ -132,8 +132,12 @@ def sync_week(token, sb, weeks_ago):
     totals = defaultdict(float)
     cb_qty = defaultdict(float)
     cold_brew_litres = 0.0
+    cb_rows = []   # per-customer cold brew lines for the tally dashboard
     order_count = 0
     rising_sun_dates = []
+    # Bean/equipment SKU prefixes that legitimately mention "cold brew" but
+    # are never brewed litres — not flagged as unknown variants
+    CB_IGNORE_PREFIXES = ("OQ-COF", "TOD-", "HR-", "OQ-MISC")
 
     for order in all_orders:
         if order.get("cancelled"): continue
@@ -143,16 +147,37 @@ def sync_week(token, sb, weeks_ago):
         retailer_name = order.get("retailerName", "") or ""
         for item in detail.get("lineItems", []):
             sku = (item.get("SKU", "") or "").upper()
+            item_name = item.get("name", "") or ""
             if sku in CB_VARIANTS:
                 qty_field, litres_per_unit = CB_VARIANTS[sku]
                 q = float(item.get("quantity", 0) or 0)
                 # Venue orders of bottle/bucket variants tracked separately
                 # (nitro is already its own field — always Ballina)
-                if "nitro" not in qty_field and is_venue_order(retailer_name):
+                if "nitro" in qty_field:
+                    category = "nitro"
+                elif is_venue_order(retailer_name):
+                    category = "venue"
                     qty_field = qty_field.replace("cb_", "cb_venue_")
+                else:
+                    category = "wholesale"
                 cb_qty[qty_field] += q
                 cold_brew_litres += q * litres_per_unit
+                cb_rows.append({
+                    "retailer_name": retailer_name, "sku": sku,
+                    "product_name": item_name, "qty": q,
+                    "litres": round(q * litres_per_unit, 2),
+                    "category": category,
+                })
                 continue
+            # Unknown cold brew variant (renamed product / new size) — flag it
+            if ("cold brew" in item_name.lower()
+                    and not sku.startswith(CB_IGNORE_PREFIXES)):
+                cb_rows.append({
+                    "retailer_name": retailer_name, "sku": sku,
+                    "product_name": item_name,
+                    "qty": float(item.get("quantity", 0) or 0),
+                    "litres": 0, "category": "unknown",
+                })
             field = classify(item.get("name", ""), item.get("SKU", ""))
             if not field: continue
             kg = extract_kg(item.get("name", ""), item.get("quantity", 0) or 0)
@@ -200,7 +225,15 @@ def sync_week(token, sb, weeks_ago):
         "updated_at":       datetime.now(timezone.utc).isoformat(),
     }, on_conflict="week_start").execute()
 
-    print(f"  Week {week_start_date} written ✓")
+    # Per-customer cold brew lines for the tally dashboard: replace the week
+    sb.table("cold_brew_orders").delete().eq(
+        "week_start", str(week_start_date)).execute()
+    if cb_rows:
+        for r in cb_rows:
+            r["week_start"] = str(week_start_date)
+        sb.table("cold_brew_orders").insert(cb_rows).execute()
+
+    print(f"  Week {week_start_date} written ✓ ({len(cb_rows)} cold brew lines)")
 
 
 def main():
