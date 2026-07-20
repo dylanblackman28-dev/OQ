@@ -96,6 +96,27 @@ def is_whs_coffee_sku(sku):
     return (sku or "").upper().startswith("OQ-COF-WHS")
 
 
+def is_non_blend(name, sku):
+    """
+    This tracker measures BLEND kg only — the core wholesale product Amelia
+    uses for pricing / retention / upsell analysis. Non-blend coffees are
+    excluded from kg_ordered even though they carry an OQ-COF-WHS SKU:
+      - Decaf
+      - Single-origin cold brew beans (e.g. "Cold Brew Release | Mae Chedi",
+        SKU OQ-COF-WHS-CB-...-WHL) — beans for the customer to brew, not a blend
+    They still mark the order as a coffee order, so order_count / revenue /
+    late tracking are unaffected — only the kg total changes.
+    """
+    n = (name or "").lower()
+    s = (sku or "").upper()
+    if "decaf" in n or "-DEC" in s:
+        return True
+    # Cold brew bean releases / single-origin cold brew (Mae Chedi)
+    if "cold brew" in n or "mae chedi" in n or "-CB-" in s:
+        return True
+    return False
+
+
 def extract_kg(name, qty):
     n = name.lower()
     if "5kg" in n and ("drum" in n or "tin" in n or "swap" in n):
@@ -205,10 +226,10 @@ def process_orders(all_orders, token):
         detail = om_get(
             f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
 
-        # Calculate WHS coffee kg for this order.
-        # Decaf still marks the order as a WHS coffee order (so it counts for
-        # order_count / revenue / late tracking) but its kg is excluded from
-        # kg_ordered totals.
+        # Calculate WHS BLEND kg for this order. Non-blend coffees (decaf,
+        # single-origin cold brew beans) still mark the order as a WHS coffee
+        # order — so order_count / revenue / late tracking are unaffected — but
+        # their kg is excluded from kg_ordered totals. See is_non_blend().
         whs_kg = 0.0
         has_whs_coffee = False
         for item in detail.get("lineItems", []):
@@ -217,7 +238,7 @@ def process_orders(all_orders, token):
                 continue
             has_whs_coffee = True
             name = item.get("name", "") or ""
-            if "decaf" in name.lower() or "-DEC" in sku.upper():
+            if is_non_blend(name, sku):
                 continue
             qty = item.get("quantity", 0) or 0
             whs_kg += extract_kg(name, qty)
