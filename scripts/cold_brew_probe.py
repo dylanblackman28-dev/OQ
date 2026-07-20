@@ -69,21 +69,29 @@ def probe_week(token, weeks_ago):
         page += 1
         time.sleep(0.2)
 
+    OQ_VENUES = ["old quarter coffee merchants", "oq ballina", "oq murwillumbah",
+                 "oq southport", "oq coolangatta", "oq murbah", "oqc"]
     qty = defaultdict(float)
     unknown = defaultdict(float)   # OQ-CLD-BR* SKUs not in VARIANTS
+    lines = []                     # every cold-brew-ish line item, for audit
     for order in orders:
         if order.get("cancelled"):
             continue
+        retailer = (order.get("retailerName") or order.get("retailer", {}).get("name") or "?")
+        is_venue = any(v in retailer.lower() for v in OQ_VENUES)
         detail = om_get(f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
         for item in detail.get("lineItems", []):
             sku = (item.get("SKU", "") or "").upper()
-            if not sku.startswith("OQ-CLD-BR"):
-                continue
+            name = item.get("name", "") or ""
             q = float(item.get("quantity", 0) or 0)
+            # catch ANYTHING cold-brew-ish, by SKU or name
+            if "CLD" not in sku and "cold brew" not in name.lower():
+                continue
+            lines.append((retailer, is_venue, sku, name, q))
             if sku in VARIANTS:
                 qty[sku] += q
-            else:
-                unknown[f"{sku} | {item.get('name','')}"] += q
+            elif sku.startswith("OQ-CLD-BR"):
+                unknown[f"{sku} | {name}"] += q
         time.sleep(0.1)
 
     print(f"\nWeek {week_start} → {week_start + timedelta(days=6)}  ({len(orders)} orders scanned)")
@@ -103,6 +111,10 @@ def probe_week(token, weeks_ago):
     print(f"  TOTAL TO BREW:    {litres_nonnitro + litres_nitro:.1f}L")
     for k, q in unknown.items():
         print(f"  ⚠ UNRECOGNISED cold brew SKU: {k} (qty {q:g})")
+    print(f"  --- every cold-brew line item this week ---")
+    for retailer, is_venue, sku, name, q in sorted(lines, key=lambda l: (not l[1], l[0])):
+        tag = "VENUE " if is_venue else "      "
+        print(f"  {tag}{retailer[:30]:30s} | {sku:22s} | {name[:44]:44s} | qty {q:g}")
 
 
 def main():
