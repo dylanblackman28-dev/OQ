@@ -77,6 +77,9 @@ def classify(name, sku):
     s = (sku or "").upper()
     if not s.startswith("OQ-COF"):
         return None
+    # Mae Chedi first — venue orders are named "OQ Cafe Coffee - Mae Chedi
+    # (Cold Brew)" and would otherwise fall into the venue branch and be lost
+    if "mae chedi" in n or "cold brew release" in n: return "mae_chedi_kg"
     if "oq cafe coffee" in n or "oq-cof-cafe" in s or "oq-cof-ven" in s:
         if "milk" in n:  return "venue_milk_kg"
         if "black" in n: return "venue_black_kg"
@@ -179,6 +182,7 @@ def sync_week(token, sb, weeks_ago):
         "euphoria_kg":      round(totals.get("euphoria_kg", 0), 2),
         "decaf_kg":         round(totals.get("decaf_kg", 0), 2),
         "vietnam_kho_kg":   round(totals.get("vietnam_kho_kg", 0), 2),
+        "mae_chedi_kg":     round(totals.get("mae_chedi_kg", 0), 2),
         "rising_sun_kg":    round(totals.get("rising_sun_kg", 0), 2),
         "venue_milk_kg":    round(totals.get("venue_milk_kg", 0), 2),
         "venue_black_kg":   round(totals.get("venue_black_kg", 0), 2),
