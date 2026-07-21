@@ -96,23 +96,30 @@ def is_whs_coffee_sku(sku):
     return (sku or "").upper().startswith("OQ-COF-WHS")
 
 
-def is_non_blend(name, sku):
+def is_tracked_blend(name, sku):
     """
     This tracker measures BLEND kg only — the core wholesale product Amelia
-    uses for pricing / retention / upsell analysis. Non-blend coffees are
-    excluded from kg_ordered even though they carry an OQ-COF-WHS SKU:
-      - Decaf
-      - Single-origin cold brew beans (e.g. "Cold Brew Release | Mae Chedi",
-        SKU OQ-COF-WHS-CB-...-WHL) — beans for the customer to brew, not a blend
-    They still mark the order as a coffee order, so order_count / revenue /
-    late tracking are unaffected — only the kg total changes.
+    uses for pricing / retention / upsell analysis. Rather than trying to
+    exclude an ever-growing list of non-blends (decaf, single origins, limited
+    releases like Sirinya / Mae Chedi cold brew), we POSITIVELY allow-list the
+    three blends. Anything else carrying an OQ-COF-WHS SKU — every current and
+    future single origin or limited release — is automatically excluded from kg.
+
+    Non-blend coffees still mark the order as a coffee order, so order_count /
+    revenue / late tracking / LTV are unaffected — only kg_ordered changes.
+
+    Tracked blends (confirmed by Dylan, Jul 2026): Village Blend, Cloud Nine,
+    Euphoria. Decaf is excluded even when it's a decaf version of a blend.
     """
     n = (name or "").lower()
     s = (sku or "").upper()
     if "decaf" in n or "-DEC" in s:
+        return False
+    if "village" in n or "-VG-" in s or "-VB-" in s:
         return True
-    # Cold brew bean releases / single-origin cold brew (Mae Chedi)
-    if "cold brew" in n or "mae chedi" in n or "-CB-" in s:
+    if "cloud nine" in n or "cloud 9" in n or "-C9-" in s or "-CL9-" in s:
+        return True
+    if "euphoria" in n or "-EU-" in s:
         return True
     return False
 
@@ -226,10 +233,11 @@ def process_orders(all_orders, token):
         detail = om_get(
             f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
 
-        # Calculate WHS BLEND kg for this order. Non-blend coffees (decaf,
-        # single-origin cold brew beans) still mark the order as a WHS coffee
-        # order — so order_count / revenue / late tracking are unaffected — but
-        # their kg is excluded from kg_ordered totals. See is_non_blend().
+        # Calculate WHS BLEND kg for this order. Only the three tracked blends
+        # count toward kg; every other wholesale coffee (single origins, limited
+        # releases, decaf) still marks the order as a coffee order — so
+        # order_count / revenue / late tracking are unaffected — but adds no kg.
+        # See is_tracked_blend().
         whs_kg = 0.0
         has_whs_coffee = False
         for item in detail.get("lineItems", []):
@@ -238,7 +246,7 @@ def process_orders(all_orders, token):
                 continue
             has_whs_coffee = True
             name = item.get("name", "") or ""
-            if is_non_blend(name, sku):
+            if not is_tracked_blend(name, sku):
                 continue
             qty = item.get("quantity", 0) or 0
             whs_kg += extract_kg(name, qty)
