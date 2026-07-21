@@ -145,6 +145,9 @@ def sync_week(token, sb, weeks_ago):
         detail = om_get(f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
         order_has_rising_sun = False
         retailer_name = order.get("retailerName", "") or ""
+        order_number = order.get("orderNumber") or order.get("number") or None
+        placed_at = order.get("createdAt") or None
+        delivery_date = order.get("deliveryDate") or None
         for item in detail.get("lineItems", []):
             sku = (item.get("SKU", "") or "").upper()
             item_name = item.get("name", "") or ""
@@ -167,6 +170,9 @@ def sync_week(token, sb, weeks_ago):
                     "product_name": item_name, "qty": q,
                     "litres": round(q * litres_per_unit, 2),
                     "category": category,
+                    "order_number": order_number,
+                    "placed_at": placed_at,
+                    "delivery_date": delivery_date,
                 })
                 continue
             # Unknown cold brew variant (renamed product / new size) — flag it
@@ -177,6 +183,9 @@ def sync_week(token, sb, weeks_ago):
                     "product_name": item_name,
                     "qty": float(item.get("quantity", 0) or 0),
                     "litres": 0, "category": "unknown",
+                    "order_number": order_number,
+                    "placed_at": placed_at,
+                    "delivery_date": delivery_date,
                 })
             field = classify(item.get("name", ""), item.get("SKU", ""))
             if not field: continue

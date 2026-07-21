@@ -74,25 +74,12 @@ def probe_week(token, weeks_ago):
     qty = defaultdict(float)
     unknown = defaultdict(float)   # OQ-CLD-BR* SKUs not in VARIANTS
     lines = []                     # every cold-brew-ish line item, for audit
-    printed_keys = False
     for order in orders:
         if order.get("cancelled"):
             continue
         retailer = (order.get("retailerName") or order.get("retailer", {}).get("name") or "?")
         is_venue = any(v in retailer.lower() for v in OQ_VENUES)
         detail = om_get(f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
-        if not printed_keys:
-            printed_keys = True
-            print("\n=== FIELD PROBE (one order) ===")
-            print("ORDER LIST keys:", sorted(order.keys()))
-            print("ORDER DETAIL keys:", sorted(detail.keys()))
-            for k in ("number", "orderNumber", "reference", "poNumber",
-                      "createdAt", "placedAt", "orderedAt",
-                      "deliveryDate", "deliveredAt", "deliverAt", "scheduledAt",
-                      "requestedDeliveryDate", "fulfilledAt"):
-                if k in order or k in detail:
-                    print(f"  order.{k}={order.get(k)!r}  detail.{k}={detail.get(k)!r}")
-            print("=== END FIELD PROBE ===\n")
         for item in detail.get("lineItems", []):
             sku = (item.get("SKU", "") or "").upper()
             name = item.get("name", "") or ""
