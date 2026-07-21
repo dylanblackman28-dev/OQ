@@ -65,6 +65,24 @@ main{max-width:1200px;margin:0 auto;padding:2rem;display:none}
 .blend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:2rem}
 .blend-card{background:#fff;border-radius:12px;border:1.5px solid var(--border);padding:1.25rem 1.5rem;position:relative;overflow:hidden;cursor:pointer;transition:border-color .15s}
 .blend-card:hover{border-color:var(--arctic)}
+/* COLD BREW MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(15,19,90,.5);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:2rem;width:min(720px,95vw);max-height:85vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem}
+.modal-title{font-size:1.1rem;font-weight:700;color:var(--indigo)}
+.modal-sub{font-size:.72rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:.25rem}
+.modal-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);line-height:1}
+.cb-modal-table{width:100%;border-collapse:collapse}
+.cb-modal-table th{text-align:left;font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:.4rem .5rem;border-bottom:1px solid var(--border)}
+.cb-modal-table td{padding:.6rem .5rem;border-bottom:1px solid rgba(15,19,90,.06);font-size:.9rem}
+.cb-modal-table tr:last-child td{border-bottom:none}
+.cb-modal-table td.cust{font-weight:600;color:var(--indigo)}
+.cb-modal-table td.num{font-family:'DM Mono',monospace}
+.cb-modal-table td.qty{font-family:'DM Mono',monospace;font-weight:600;color:var(--grape)}
+.cb-modal-table td.muted{font-family:'DM Mono',monospace;color:var(--muted);font-size:.8rem}
+.cb-modal-table td.deliv{font-family:'DM Mono',monospace;color:var(--indigo);font-weight:500}
+.cb-empty{color:var(--muted);font-size:.85rem;padding:1.5rem 0;text-align:center}
 .blend-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px}
 .blend-name{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
 .blend-kg{font-size:2.25rem;font-weight:700;line-height:1}
@@ -203,6 +221,19 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 
 </main>
 
+<div class="modal-bg" id="cb-modal-bg" onclick="closeCbModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="cb-modal-title">Cold Brew Orders</div>
+        <div class="modal-sub" id="cb-modal-sub"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('cb-modal-bg').classList.remove('open')">×</button>
+    </div>
+    <div id="cb-modal-body"></div>
+  </div>
+</div>
+
 <footer>OQ Kilos Ordered Tracker Analytics · Data from Ordermentum</footer>
 
 <script>
@@ -340,19 +371,19 @@ function renderBlendCards(row, prev, blends, containerId) {
 }
 
 const CB_GROUPS = [
-  { title: 'Wholesale', variants: [
-    {qty:'cb_1lt_qty',   label:'1L Glass Bottles',         lpu:1,    color:'#46c4dc'},
-    {qty:'cb_5lt_qty',   label:'5L Swap & Refill Buckets', lpu:5,    color:'#61bb4b'},
-    {qty:'cb_330ml_qty', label:'330ml Glass Bottles',      lpu:0.33, color:'#e0c23a'},
+  { title: 'Wholesale', cat:'wholesale', variants: [
+    {qty:'cb_1lt_qty',   sku:'OQ-CLD-BR-1LT',   label:'1L Glass Bottles',         lpu:1,    color:'#46c4dc'},
+    {qty:'cb_5lt_qty',   sku:'OQ-CLD-BR-5LT',   label:'5L Swap & Refill Buckets', lpu:5,    color:'#61bb4b'},
+    {qty:'cb_330ml_qty', sku:'OQ-CLD-BR-330ML', label:'330ml Glass Bottles',      lpu:0.33, color:'#e0c23a'},
   ]},
-  { title: 'Venues', variants: [
-    {qty:'cb_venue_1lt_qty',   label:'1L Glass Bottles',         lpu:1,    color:'#46c4dc'},
-    {qty:'cb_venue_5lt_qty',   label:'5L Swap & Refill Buckets', lpu:5,    color:'#61bb4b'},
-    {qty:'cb_venue_330ml_qty', label:'330ml Glass Bottles',      lpu:0.33, color:'#e0c23a'},
+  { title: 'Venues', cat:'venue', variants: [
+    {qty:'cb_venue_1lt_qty',   sku:'OQ-CLD-BR-1LT',   label:'1L Glass Bottles',         lpu:1,    color:'#46c4dc'},
+    {qty:'cb_venue_5lt_qty',   sku:'OQ-CLD-BR-5LT',   label:'5L Swap & Refill Buckets', lpu:5,    color:'#61bb4b'},
+    {qty:'cb_venue_330ml_qty', sku:'OQ-CLD-BR-330ML', label:'330ml Glass Bottles',      lpu:0.33, color:'#e0c23a'},
   ]},
-  { title: 'Ballina — Nitro', variants: [
-    {qty:'cb_nitro_10lt_qty', label:'10L Nitro Buckets', lpu:10, color:'#824e9f', note:'winter'},
-    {qty:'cb_nitro_20lt_qty', label:'20L Nitro Buckets', lpu:20, color:'#f4932b', note:'summer'},
+  { title: 'Ballina — Nitro', cat:'nitro', variants: [
+    {qty:'cb_nitro_10lt_qty', sku:'OQ-CLD-BR-10LT', label:'10L Nitro Buckets', lpu:10, color:'#824e9f', note:'winter'},
+    {qty:'cb_nitro_20lt_qty', sku:'OQ-CLD-BR-20LT', label:'20L Nitro Buckets', lpu:20, color:'#f4932b', note:'summer'},
   ]},
 ];
 // All cold brew qty fields, for group litre subtotals
@@ -382,7 +413,7 @@ function renderColdBrew(row, prev) {
     const groupLitres = g.variants.reduce((s,v) => s + +(row[v.qty]||0) * v.lpu, 0);
     const cards = g.variants.map(v => {
       const q = +(row[v.qty]||0);
-      return `<div class="blend-card" style="border-top:4px solid ${v.color}">
+      return `<div class="blend-card" onclick="openCbModal('${g.cat}','${v.sku}','${v.label}')" style="border-top:4px solid ${v.color}">
         <div class="blend-name">${v.label}${v.note ? `<span style="font-weight:400;margin-left:.5rem;opacity:.6">${v.note}</span>` : ''}</div>
         <div class="blend-kg" style="color:${q > 0 ? v.color : 'var(--border)'}">${q % 1 === 0 ? q : q.toFixed(1)}<span style="font-size:1rem;font-weight:500;color:var(--muted)"> ordered</span></div>
         <div class="blend-meta"><span class="blend-avg">= ${fmtL(q * v.lpu)}</span></div>
@@ -396,6 +427,53 @@ function renderColdBrew(row, prev) {
   }).join('');
 
   el.innerHTML = totalCard + groups;
+}
+
+// ---- Cold Brew order detail modal ----
+const cbCache = {};   // week -> array of cold_brew_orders rows
+const fmtCbDate = s => {
+  if (!s) return '—';
+  const d = new Date(s);
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short'});
+};
+async function fetchCbRows(week) {
+  if (cbCache[week]) return cbCache[week];
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/cold_brew_orders?week_start=eq.${week}&select=*`,
+    { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } });
+  const rows = r.ok ? await r.json() : [];
+  cbCache[week] = rows;
+  return rows;
+}
+async function openCbModal(cat, sku, label) {
+  const week = currentWeek;
+  document.getElementById('cb-modal-title').textContent = label;
+  document.getElementById('cb-modal-sub').textContent =
+    `${weekLabel(week)} · ${cat}`;
+  document.getElementById('cb-modal-body').innerHTML =
+    `<div class="cb-empty">Loading…</div>`;
+  document.getElementById('cb-modal-bg').classList.add('open');
+  const all = await fetchCbRows(week);
+  const rows = all.filter(r => r.category === cat && (r.sku||'').toUpperCase() === sku)
+                  .sort((a,b) => (a.retailer_name||'').localeCompare(b.retailer_name||''));
+  const body = document.getElementById('cb-modal-body');
+  if (!rows.length) {
+    body.innerHTML = `<div class="cb-empty">No orders for this variant this week</div>`;
+    return;
+  }
+  body.innerHTML = `<table class="cb-modal-table"><thead><tr>
+      <th>Customer</th><th>OMO #</th><th>Placed</th><th>Delivery</th><th style="text-align:right">Qty</th>
+    </tr></thead><tbody>${rows.map(r => `<tr>
+      <td class="cust">${r.retailer_name||'—'}</td>
+      <td class="num">${r.order_number||'—'}</td>
+      <td class="muted">${fmtCbDate(r.placed_at)}</td>
+      <td class="deliv">${fmtCbDate(r.delivery_date)}</td>
+      <td class="qty" style="text-align:right">${(+r.qty||0)%1===0 ? (+r.qty||0) : (+r.qty).toFixed(1)}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+function closeCbModal(e) {
+  if (e.target === document.getElementById('cb-modal-bg'))
+    document.getElementById('cb-modal-bg').classList.remove('open');
 }
 
 function drawTrend() {
