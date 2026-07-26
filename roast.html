@@ -240,17 +240,19 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 const SUPABASE_URL = 'https://poswbggoxhnayvvubpao.supabase.co';
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvc3diZ2dveGhuYXl2dnVicGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjkxMTAsImV4cCI6MjA5NzA0NTExMH0.rT93P50Q8MyBT_6EvkLCW4XRL_vN8WzYmz3i6HZ_Z-0';
 
+// detail:true = card is clickable and opens the per-customer order modal
+// (backed by the blend_orders table). K'Ho and Rising Sun intentionally omitted.
 const BLENDS = [
-  {field:'village_blend_kg', label:'Village Blend', color:'#46c4dc'},
-  {field:'cloud_nine_kg',    label:'Cloud Nine',   color:'#61bb4b'},
-  {field:'euphoria_kg',      label:'Euphoria',     color:'#f4932b'},
-  {field:'decaf_kg',         label:'Decaf',        color:'#e0c23a'},
+  {field:'village_blend_kg', label:'Village Blend', color:'#46c4dc', detail:true},
+  {field:'cloud_nine_kg',    label:'Cloud Nine',   color:'#61bb4b', detail:true},
+  {field:'euphoria_kg',      label:'Euphoria',     color:'#f4932b', detail:true},
+  {field:'decaf_kg',         label:'Decaf',        color:'#e0c23a', detail:true},
   {field:'vietnam_kho_kg',   label:"Vietnam K'Ho", color:'#824e9f'},
 ];
 const OTHER = [
   {field:'rising_sun_kg',  label:'Rising Sun Roasters', color:'#f4932b', note:'Contract roasting'},
-  {field:'venue_milk_kg',  label:'Venue — Milk Espresso', color:'#824e9f', note:'OQ venues'},
-  {field:'venue_black_kg', label:'Venue — Black Espresso', color:'#3a3f7d', note:'OQ venues'},
+  {field:'venue_milk_kg',  label:'Venue — Milk Espresso', color:'#824e9f', note:'OQ venues', detail:true},
+  {field:'venue_black_kg', label:'Venue — Black Espresso', color:'#3a3f7d', note:'OQ venues', detail:true},
 ];
 
 let allData = [];
@@ -359,7 +361,9 @@ function renderBlendCards(row, prev, blends, containerId) {
     const avg = rolling(b.field, currentWeek);
     const cls = pct !== null ? (pct > 5 ? 'trend-up' : pct < -5 ? 'trend-down' : 'trend-flat') : 'trend-flat';
     const arrow = pct !== null ? (pct > 5 ? '↑' : pct < -5 ? '↓' : '→') : '';
-    return `<div class="blend-card" style="border-top:4px solid ${b.color}">
+    const click = b.detail ? ` onclick="openBlendModal('${b.field}')"` : '';
+    const cursor = b.detail ? '' : 'cursor:default;';
+    return `<div class="blend-card"${click} style="${cursor}border-top:4px solid ${b.color}">
       <div class="blend-name">${b.label}${b.note ? `<span style="font-weight:400;margin-left:.5rem;opacity:.6">${b.note}</span>` : ''}</div>
       <div class="blend-kg" style="color:${b.color}">${fmtKg(kg)}</div>
       <div class="blend-meta">
@@ -474,6 +478,61 @@ async function openCbModal(cat, sku, label) {
 function closeCbModal(e) {
   if (e.target === document.getElementById('cb-modal-bg'))
     document.getElementById('cb-modal-bg').classList.remove('open');
+}
+
+// ---- Blend / venue espresso order detail modal (same shell as cold brew) ----
+const blendCache = {};   // week -> array of blend_orders rows
+async function fetchBlendRows(week) {
+  if (blendCache[week]) return blendCache[week];
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/blend_orders?week_start=eq.${week}&select=*`,
+    { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } });
+  const rows = r.ok ? await r.json() : [];
+  blendCache[week] = rows;
+  return rows;
+}
+async function openBlendModal(field) {
+  const week = currentWeek;
+  const def = BLENDS.concat(OTHER).find(b => b.field === field) || {label: field};
+  const isVenue = field.startsWith('venue_');
+  document.getElementById('cb-modal-title').textContent = def.label;
+  document.getElementById('cb-modal-sub').textContent =
+    `${weekLabel(week)} · ${isVenue ? 'OQ venues' : 'kilos ordered'}`;
+  document.getElementById('cb-modal-body').innerHTML = `<div class="cb-empty">Loading…</div>`;
+  document.getElementById('cb-modal-bg').classList.add('open');
+
+  const all = await fetchBlendRows(week);
+  // One row per customer per order — a single order can carry several line
+  // items of the same blend (e.g. ground + whole bean), so sum their kilos.
+  const grouped = {};
+  all.filter(r => r.field === field).forEach(r => {
+    const key = `${r.retailer_name}|${r.order_number || ''}`;
+    if (!grouped[key]) grouped[key] = {
+      retailer_name: r.retailer_name, order_number: r.order_number,
+      placed_at: r.placed_at, delivery_date: r.delivery_date, kg: 0,
+    };
+    grouped[key].kg += +r.kg || 0;
+  });
+  const rows = Object.values(grouped).sort((a, b) => b.kg - a.kg);
+
+  const body = document.getElementById('cb-modal-body');
+  if (!rows.length) {
+    body.innerHTML = `<div class="cb-empty">No orders for this ${isVenue ? 'venue product' : 'blend'} this week</div>`;
+    return;
+  }
+  const total = rows.reduce((s, r) => s + r.kg, 0);
+  body.innerHTML = `<table class="cb-modal-table"><thead><tr>
+      <th>${isVenue ? 'Venue' : 'Customer'}</th><th>OMO #</th><th>Placed</th><th>Delivery</th>
+      <th style="text-align:right">Kg</th>
+    </tr></thead><tbody>${rows.map(r => `<tr>
+      <td class="cust">${r.retailer_name || '—'}</td>
+      <td class="num">${r.order_number || '—'}</td>
+      <td class="muted">${fmtCbDate(r.placed_at)}</td>
+      <td class="deliv">${fmtCbDate(r.delivery_date)}</td>
+      <td class="qty" style="text-align:right">${fmtKg(r.kg)}</td>
+    </tr>`).join('')}
+    <tr><td colspan="4" style="font-weight:700;padding-top:.7rem">Total</td>
+      <td class="qty" style="text-align:right;font-weight:700;padding-top:.7rem">${fmtKg(total)}</td></tr>
+    </tbody></table>`;
 }
 
 function drawTrend() {

@@ -133,8 +133,15 @@ def sync_week(token, sb, weeks_ago):
     cb_qty = defaultdict(float)
     cold_brew_litres = 0.0
     cb_rows = []   # per-customer cold brew lines for the tally dashboard
+    blend_rows = []  # per-customer blend lines for the dashboard order modals
     order_count = 0
     rising_sun_dates = []
+    # Fields that get per-customer order detail on the dashboard.
+    # K'Ho and Rising Sun deliberately excluded — no order modal for those.
+    BLEND_DETAIL_FIELDS = {
+        "village_blend_kg", "cloud_nine_kg", "euphoria_kg", "decaf_kg",
+        "venue_milk_kg", "venue_black_kg",
+    }
     # Bean/equipment SKU prefixes that legitimately mention "cold brew" but
     # are never brewed litres — not flagged as unknown variants
     CB_IGNORE_PREFIXES = ("OQ-COF", "TOD-", "HR-", "OQ-MISC")
@@ -189,8 +196,18 @@ def sync_week(token, sb, weeks_ago):
                 })
             field = classify(item.get("name", ""), item.get("SKU", ""))
             if not field: continue
-            kg = extract_kg(item.get("name", ""), item.get("quantity", 0) or 0)
+            qty = item.get("quantity", 0) or 0
+            kg = extract_kg(item.get("name", ""), qty)
             totals[field] += kg
+            if field in BLEND_DETAIL_FIELDS:
+                blend_rows.append({
+                    "retailer_name": retailer_name, "field": field,
+                    "sku": sku, "product_name": item_name,
+                    "qty": float(qty), "kg": round(kg, 2),
+                    "order_number": order_number,
+                    "placed_at": placed_at,
+                    "delivery_date": delivery_date,
+                })
             if field == "rising_sun_kg":
                 order_has_rising_sun = True
         if order_has_rising_sun:
@@ -242,7 +259,16 @@ def sync_week(token, sb, weeks_ago):
             r["week_start"] = str(week_start_date)
         sb.table("cold_brew_orders").insert(cb_rows).execute()
 
-    print(f"  Week {week_start_date} written ✓ ({len(cb_rows)} cold brew lines)")
+    # Per-customer blend lines for the dashboard order modals: replace the week
+    sb.table("blend_orders").delete().eq(
+        "week_start", str(week_start_date)).execute()
+    if blend_rows:
+        for r in blend_rows:
+            r["week_start"] = str(week_start_date)
+        sb.table("blend_orders").insert(blend_rows).execute()
+
+    print(f"  Week {week_start_date} written ✓ "
+          f"({len(cb_rows)} cold brew lines, {len(blend_rows)} blend lines)")
 
 
 def main():
