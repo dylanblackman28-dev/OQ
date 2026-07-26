@@ -218,6 +218,7 @@ def process_orders(all_orders, token):
         "order_count": 0,
         "late_count": 0,
         "revenue": 0.0,
+        "last_blend_date": None,   # date of most recent order containing BLEND kg
     })
 
     for i, order in enumerate(all_orders):
@@ -262,6 +263,20 @@ def process_orders(all_orders, token):
         p["order_count"] += 1
         p["revenue"] += float(order.get("total", 0) or 0)
 
+        # Track the most recent order that actually contained BLEND kg.
+        # Retail-only / single-origin / decaf-only orders must NOT count here —
+        # the dashboard alerts on partners who've stopped ordering blends even
+        # if they're still ordering other products.
+        if whs_kg > 0:
+            try:
+                d = datetime.fromisoformat(
+                    (order.get("createdAt") or "").replace("Z", "+00:00")
+                ).astimezone(AEST).date()
+                if p["last_blend_date"] is None or d > p["last_blend_date"]:
+                    p["last_blend_date"] = d
+            except Exception:
+                pass
+
         # Late only if WHS coffee order placed in Tue/Wed window
         if is_in_late_window(order.get("createdAt", "")):
             p["late_count"] += 1
@@ -294,6 +309,24 @@ def upsert_partner(sb, retailer_id, name, first_order_date=None):
             "first_order_date": str(first_order_date) if first_order_date else None,
         }).execute()
         return result.data[0]["id"]
+
+
+def update_last_blend_order_date(sb, partner_id, blend_date):
+    """
+    Store the partner's most recent BLEND order date, only ever moving it
+    forward. Syncs process one or two weeks at a time (and backfills run
+    oldest-first), so an older run must never overwrite a newer date.
+    """
+    if not blend_date:
+        return
+    existing = sb.table("partners").select("last_blend_order_date").eq(
+        "id", partner_id).execute()
+    current = existing.data[0].get("last_blend_order_date") if existing.data else None
+    if current and str(current) >= str(blend_date):
+        return
+    sb.table("partners").update({
+        "last_blend_order_date": str(blend_date),
+    }).eq("id", partner_id).execute()
 
 
 def upsert_weekly_order(sb, partner_id, week_start, kg, order_count,
@@ -387,6 +420,7 @@ def sync_week(token, sb, weeks_ago):
             sb, partner_id, week_start_date,
             data["kg"], data["order_count"], data["late_count"], data["revenue"]
         )
+        update_last_blend_order_date(sb, partner_id, data["last_blend_date"])
         refresh_order_summary(sb, partner_id)
 
     print(f"  Week {week_start_date}: {len(partner_data)} partners synced ✓")
