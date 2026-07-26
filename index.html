@@ -64,18 +64,6 @@ main{max-width:1400px;margin:0 auto;padding:2rem;display:none}
 .bar-fill.current{background:var(--arctic)}
 .bar-fill.prev-year{background:rgba(70,196,220,.3)}
 .bar-label{font-size:.55rem;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap}
-/* DORMANT ALERT */
-.alert-box{background:#fff;border:1.5px solid rgba(240,83,75,.35);border-left:4px solid var(--coral);border-radius:12px;padding:1.1rem 1.4rem;margin-bottom:1.5rem}
-.alert-head{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.2rem}
-.alert-title{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--coral)}
-.alert-note{font-size:.7rem;color:var(--muted)}
-.alert-row{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;padding:.55rem 0;border-bottom:1px solid rgba(15,19,90,.06);flex-wrap:wrap;cursor:pointer}
-.alert-row:last-child{border-bottom:none}
-.alert-row:hover .alert-name{color:var(--arctic)}
-.alert-name{font-size:.88rem;font-weight:700;color:var(--indigo)}
-.alert-meta{font-size:.78rem;font-family:'DM Mono',monospace;color:var(--muted);display:flex;gap:1.25rem;flex-wrap:wrap}
-.alert-weeks{color:var(--coral);font-weight:500}
-.alert-ok{font-size:.8rem;color:var(--apple);font-weight:600;padding:.3rem 0}
 /* PARTNER TABLE */
 .table-wrap{background:#fff;border-radius:12px;border:1.5px solid var(--border);overflow:hidden;margin-bottom:1.5rem}
 table{width:100%;border-collapse:collapse;font-size:.82rem}
@@ -172,9 +160,6 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
       <div class="late-list" id="late-chart"></div>
     </div>
   </div>
-
-  <div class="section-hd"><span class="section-title">Attention — Lapsed Blend Orders</span><div class="section-line"></div></div>
-  <div id="dormant-alert"></div>
 
   <div class="section-hd"><span class="section-title">Partner Orders — This Week</span><div class="section-line"></div></div>
   <div class="table-wrap">
@@ -469,53 +454,30 @@ function renderTable(data) {
 // counts as lapsed — that's the point of the alert.
 const LAPSED_WEEKS = 3;
 function weeksWithoutBlend(pid) {
+  // Counts consecutive most-recent ordering weeks with zero blend kg, INCLUDING
+  // the current open week. A partner whose last blend order was 3 weeks ago is
+  // lapsed even though this week hasn't closed yet — that's when to chase them.
   let streak = 0;
   for (let i = 0; i < weeks.length; i++) {
     const wo = allWeeklyOrders.find(x => x.partner_id === pid && x.week_start === weeks[i]);
     if (wo && +wo.kg_ordered > 0) break;
-    // The open week isn't a miss yet — they may still order before it closes
-    if (i === 0 && isWeekInProgress(weeks[i])) continue;
     streak++;
   }
   return streak;
 }
-function lastBlendOrderLabel(p) {
+function lastBlendOrder(p) {
+  // Exact date from the sync; falls back to the ordering week if the sync
+  // hasn't recorded a date for this partner yet.
   if (p.last_blend_order_date) {
-    return new Date(p.last_blend_order_date + 'T00:00:00')
-      .toLocaleDateString('en-AU', {day:'numeric', month:'short', year:'numeric'});
+    const d = new Date(p.last_blend_order_date + 'T00:00:00');
+    return d.toLocaleDateString('en-AU', {day:'2-digit', month:'2-digit', year:'numeric'});
   }
-  // Fallback to week granularity if the sync hasn't recorded an exact date yet
   const wk = allWeeklyOrders
     .filter(w => w.partner_id === p.id && +w.kg_ordered > 0)
     .sort((a, b) => b.week_start.localeCompare(a.week_start))[0];
-  return wk ? 'week of ' + weekLabel(wk.week_start).split(' – ')[0] : 'no blend order on record';
-}
-function renderDormantAlert() {
-  const el = document.getElementById('dormant-alert');
-  const lapsed = allPartners
-    .map(p => ({ p, n: weeksWithoutBlend(p.id) }))
-    .filter(x => x.n >= LAPSED_WEEKS)
-    .sort((a, b) => b.n - a.n || a.p.name.localeCompare(b.p.name));
-
-  if (!lapsed.length) {
-    el.innerHTML = `<div class="alert-box" style="border-color:rgba(97,187,75,.35);border-left-color:var(--apple)">
-      <div class="alert-ok">✓ All active partners have ordered blend coffee within the last ${LAPSED_WEEKS} weeks.</div>
-    </div>`;
-    return;
-  }
-  el.innerHTML = `<div class="alert-box">
-    <div class="alert-head">
-      <span class="alert-title">⚑ ${lapsed.length} partner${lapsed.length===1?'':'s'} with no blend order in ${LAPSED_WEEKS}+ weeks</span>
-      <span class="alert-note">blend coffee only — retail &amp; single-origin orders don't count</span>
-    </div>
-    ${lapsed.map(x => `<div class="alert-row" onclick="openModal('${x.p.id}')">
-      <span class="alert-name">${x.p.name}</span>
-      <span class="alert-meta">
-        <span class="alert-weeks">${x.n} weeks without blend</span>
-        <span>last blend order: ${lastBlendOrderLabel(x.p)}</span>
-      </span>
-    </div>`).join('')}
-  </div>`;
+  if (!wk) return null;
+  return new Date(wk.week_start + 'T00:00:00')
+    .toLocaleDateString('en-AU', {day:'2-digit', month:'2-digit', year:'numeric'});
 }
 
 function partnerStatus(p, week) {
@@ -553,9 +515,20 @@ function renderPartnerCards() {
       const s = summaryById(m.p.id);
       const meta = STATUS_META[m.status];
       const dim = m.status === 'none';
+      let chip = meta.chip;
+      if (m.status === 'none') {
+        // Show when they last ordered BLEND coffee instead of a bare "No order".
+        // Other Heroes don't buy the wholesale blend SKUs, so never flag them.
+        const last = lastBlendOrder(m.p);
+        const lapsed = cat.key === 'Cafe' && weeksWithoutBlend(m.p.id) >= LAPSED_WEEKS;
+        const flag = lapsed
+          ? ` <span title="No blend order in ${weeksWithoutBlend(m.p.id)} weeks" style="color:var(--coral)">⚑</span>`
+          : '';
+        chip = `<span style="font-size:.68rem;font-family:'DM Mono',monospace;color:${lapsed ? 'var(--coral)' : 'var(--muted)'}">${last ? 'Last order: ' + last : 'No order on record'}${flag}</span>`;
+      }
       return `<div onclick="openModal('${m.p.id}')" style="background:#fff;border-radius:10px;border:1.5px solid var(--border);border-top:3px solid ${meta.border};padding:1rem;cursor:pointer;transition:border-color .15s;${dim ? 'opacity:.75' : ''}" onmouseover="this.style.borderColor='var(--arctic)'" onmouseout="this.style.borderColor='var(--border)'">
         <div style="font-size:.75rem;font-weight:600;margin-bottom:.4rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.p.name}</div>
-        <div style="margin-bottom:.45rem">${meta.chip}</div>
+        <div style="margin-bottom:.45rem">${chip}</div>
         <div style="font-size:1.25rem;font-weight:700;color:${m.kg > 0 ? 'var(--indigo)' : 'var(--muted)'}">${m.kg > 0 ? fmtKg(m.kg) : '—'}</div>
         <div style="font-size:.65rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:.25rem">LTV ${s.ltv ? fmt(s.ltv) : '—'}</div>
       </div>`;
@@ -620,7 +593,6 @@ function selectWeek(w) {
 function renderAll() {
   const data = getWeekData(currentWeek);
   renderScorecard(data);
-  renderDormantAlert();
   renderTable(data);
   renderPartnerCards();
   renderTrendChart();
