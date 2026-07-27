@@ -85,11 +85,29 @@ def classify(name, sku):
         if "black" in n: return "venue_black_kg"
         return None
     if "rising sun" in n or "rsr" in s: return "rising_sun_kg"
-    if "village" in n:    return "village_blend_kg"
-    if "cloud nine" in n or "c9" in s: return "cloud_nine_kg"
-    if "euphoria" in n:   return "euphoria_kg"
-    if "decaf" in n:      return "decaf_kg"
+
+    # Blends are identified by their SKU token (4th segment), NOT the product
+    # name. Names are unreliable: "Laos - PDK Village Natural | Filter Roast"
+    # (OQ-COF-WHS-FLT-*) is a single origin whose farm name contains "Village"
+    # and was being counted as Village Blend.
+    #   VG = Village Blend, HS = Cloud Nine, EPH = Euphoria, DC = Decaf
+    parts = s.split("-")
+    token = parts[3] if len(parts) > 3 else ""
+    BLEND_TOKENS = {
+        "VG": "village_blend_kg", "HS": "cloud_nine_kg",
+        "EPH": "euphoria_kg", "DC": "decaf_kg",
+    }
+    if token in BLEND_TOKENS:
+        return BLEND_TOKENS[token]
     if "k'ho" in n or "kho" in n or "vietnam" in n: return "vietnam_kho_kg"
+    # Single origin / filter roasts are never blends, whatever the name says
+    if token == "FLT" or "filter roast" in n:
+        return None
+    # Legacy fallback for older SKUs that predate the token scheme
+    if "village blend" in n:  return "village_blend_kg"
+    if "cloud nine" in n:     return "cloud_nine_kg"
+    if "euphoria" in n:       return "euphoria_kg"
+    if "decaf" in n:          return "decaf_kg"
     return None
 
 def extract_kg(name, qty):

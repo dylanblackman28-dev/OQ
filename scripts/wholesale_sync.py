@@ -113,15 +113,21 @@ def is_tracked_blend(name, sku):
     """
     n = (name or "").lower()
     s = (sku or "").upper()
-    if "decaf" in n or "-DEC" in s:
+    if "decaf" in n or "-DC-" in s or "-DEC" in s:
         return False
-    if "village" in n or "-VG-" in s or "-VB-" in s:
-        return True
-    if "cloud nine" in n or "cloud 9" in n or "-C9-" in s or "-CL9-" in s:
-        return True
-    if "euphoria" in n or "-EU-" in s:
-        return True
-    return False
+    # The SKU token (4th segment) is the authority, not the product name.
+    # "Laos - PDK Village Natural | Filter Roast" (OQ-COF-WHS-FLT-*) is a single
+    # origin whose farm name contains "Village" — name matching counted it as
+    # Village Blend. Any token that isn't a tracked blend is excluded, so new
+    # single origins and limited releases stay out automatically.
+    parts = s.split("-")
+    token = parts[3] if len(parts) > 3 else ""
+    if token:
+        return token in ("VG", "HS", "EPH")   # Village, Cloud Nine, Euphoria
+    # Legacy fallback for older SKUs that predate the token scheme
+    if "filter roast" in n:
+        return False
+    return ("village blend" in n or "cloud nine" in n or "euphoria" in n)
 
 
 def extract_kg(name, qty):

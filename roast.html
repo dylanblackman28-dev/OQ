@@ -502,36 +502,51 @@ async function openBlendModal(field) {
 
   const all = await fetchBlendRows(week);
   // One row per customer per order — a single order can carry several line
-  // items of the same blend (e.g. ground + whole bean), so sum their kilos.
+  // items of the same blend, split by channel:
+  //   BREWING = wholesale bags/drums the venue or cafe brews on site (OQ-COF-WHS,
+  //             plus venue espresso SKUs OQ-COF-CAFE / OQ-COF-VEN)
+  //   RETAIL  = pre-packed bags they sell over the counter (OQ-COF-RT)
+  const channelOf = sku => ((sku || '').toUpperCase().split('-')[2] === 'RT') ? 'retail' : 'brewing';
   const grouped = {};
   all.filter(r => r.field === field).forEach(r => {
     const key = `${r.retailer_name}|${r.order_number || ''}`;
     if (!grouped[key]) grouped[key] = {
       retailer_name: r.retailer_name, order_number: r.order_number,
-      placed_at: r.placed_at, delivery_date: r.delivery_date, kg: 0,
+      placed_at: r.placed_at, delivery_date: r.delivery_date, brewing: 0, retail: 0,
     };
-    grouped[key].kg += +r.kg || 0;
+    grouped[key][channelOf(r.sku)] += +r.kg || 0;
   });
-  const rows = Object.values(grouped).sort((a, b) => b.kg - a.kg);
+  const rows = Object.values(grouped)
+    .sort((a, b) => (b.brewing + b.retail) - (a.brewing + a.retail));
 
   const body = document.getElementById('cb-modal-body');
   if (!rows.length) {
     body.innerHTML = `<div class="cb-empty">No orders for this ${isVenue ? 'venue product' : 'blend'} this week</div>`;
     return;
   }
-  const total = rows.reduce((s, r) => s + r.kg, 0);
-  body.innerHTML = `<table class="cb-modal-table"><thead><tr>
+  const tBrew = rows.reduce((s, r) => s + r.brewing, 0);
+  const tRet  = rows.reduce((s, r) => s + r.retail, 0);
+  const cell = v => v > 0 ? fmtKg(v) : '<span style="color:var(--border)">—</span>';
+  body.innerHTML = `
+    <div style="font-size:.72rem;color:var(--muted);margin:-.25rem 0 .8rem;line-height:1.5">
+      <strong style="color:var(--indigo)">Brewing</strong> = wholesale bags &amp; drums they brew on site.
+      <strong style="color:var(--indigo)">Retail</strong> = pre-packed bags they sell to their own customers.
+      Both are roasted, so the card total is brewing + retail.
+    </div>
+    <table class="cb-modal-table"><thead><tr>
       <th>${isVenue ? 'Venue' : 'Customer'}</th><th>OMO #</th><th>Placed</th><th>Delivery</th>
-      <th style="text-align:right">Kg</th>
+      <th style="text-align:right">Brewing</th><th style="text-align:right">Retail</th>
     </tr></thead><tbody>${rows.map(r => `<tr>
       <td class="cust">${r.retailer_name || '—'}</td>
       <td class="num">${r.order_number || '—'}</td>
       <td class="muted">${fmtCbDate(r.placed_at)}</td>
       <td class="deliv">${fmtCbDate(r.delivery_date)}</td>
-      <td class="qty" style="text-align:right">${fmtKg(r.kg)}</td>
+      <td class="qty" style="text-align:right">${cell(r.brewing)}</td>
+      <td class="qty" style="text-align:right;color:var(--grape)">${cell(r.retail)}</td>
     </tr>`).join('')}
-    <tr><td colspan="4" style="font-weight:700;padding-top:.7rem">Total</td>
-      <td class="qty" style="text-align:right;font-weight:700;padding-top:.7rem">${fmtKg(total)}</td></tr>
+    <tr><td colspan="4" style="font-weight:700;padding-top:.7rem">Total ${fmtKg(tBrew + tRet)}</td>
+      <td class="qty" style="text-align:right;font-weight:700;padding-top:.7rem">${fmtKg(tBrew)}</td>
+      <td class="qty" style="text-align:right;font-weight:700;padding-top:.7rem;color:var(--grape)">${fmtKg(tRet)}</td></tr>
     </tbody></table>`;
 }
 
