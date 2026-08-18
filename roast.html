@@ -53,6 +53,26 @@ main{max-width:1200px;margin:0 auto;padding:2rem;display:none}
 .section-title{font-size:.72rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--indigo)}
 .section-line{flex:1;height:1px;background:var(--border)}
 
+/* CUPS PER DAY HERO */
+.cups-hero{background:var(--indigo);color:#fff;border-radius:14px;padding:1.9rem 2rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:2rem;flex-wrap:wrap}
+.cups-main{min-width:0}
+.cups-heading{font-size:1.05rem;font-weight:700;letter-spacing:.02em;color:#fff;margin-bottom:.5rem}
+.cups-value{font-size:3.6rem;font-weight:700;font-family:'DM Mono',monospace;line-height:1;color:#fff}
+.cups-formula{margin-top:.85rem;font-family:'DM Mono',monospace;line-height:1.7}
+.cups-formula-def{font-size:.76rem;color:rgba(255,255,255,.85)}
+.cups-formula-work{font-size:.72rem;color:rgba(255,255,255,.5)}
+.cups-goal{text-align:right;min-width:190px}
+.cups-goal-label{font-size:.62rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.cups-goal-value{font-size:1.5rem;font-weight:700;font-family:'DM Mono',monospace;color:#fff;line-height:1.2}
+.cups-goal-unit{font-size:.68rem;color:rgba(255,255,255,.5);margin-bottom:.6rem}
+.cups-goal-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
+.cups-goal-fill{height:100%;border-radius:3px;background:var(--arctic);width:0}
+.cups-goal-pct{font-size:.68rem;font-family:'DM Mono',monospace;color:rgba(255,255,255,.6);margin-top:.4rem}
+@media(max-width:700px){
+  .cups-hero{flex-direction:column;align-items:flex-start;gap:1.4rem}
+  .cups-value{font-size:2.6rem}
+  .cups-goal{text-align:left;width:100%}
+}
 /* SCORECARD */
 .scorecard{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem}
 .card{background:#fff;border-radius:12px;padding:1.25rem 1.5rem;border:1.5px solid var(--border);position:relative;overflow:hidden}
@@ -144,6 +164,25 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
   </div>
   <div class="week-legend">
     Tracking window: Tuesday 12:00pm → following Tuesday 11:59am. Orders placed Tuesday 12:00am–11:59am count toward the week that's closing (fulfilled same-day, after the official cutoff).
+  </div>
+
+  <!-- CUPS PER DAY — HERO -->
+  <div class="cups-hero">
+    <div class="cups-main">
+      <div class="cups-heading">Cups Per Day</div>
+      <div class="cups-value" id="cups-per-day">—</div>
+      <div class="cups-formula">
+        <div class="cups-formula-def">Cups/Day = Total Kilos Ordered ÷ 20 grams ÷ 7 days</div>
+        <div class="cups-formula-work" id="cups-working"></div>
+      </div>
+    </div>
+    <div class="cups-goal">
+      <div class="cups-goal-label">10-Year Goal</div>
+      <div class="cups-goal-value">1,000,000</div>
+      <div class="cups-goal-unit">cups per day</div>
+      <div class="cups-goal-bar"><div class="cups-goal-fill" id="cups-goal-fill"></div></div>
+      <div class="cups-goal-pct" id="cups-goal-pct"></div>
+    </div>
   </div>
 
   <!-- SCORECARD -->
@@ -334,6 +373,29 @@ function renderScorecard(row, prev) {
   document.getElementById('total-venue-sub').innerHTML = sub(venue, prevVenue);
   document.getElementById('total-all').textContent = fmtKg(total);
   document.getElementById('total-all-sub').innerHTML = sub(total, prevTotal);
+
+  renderCupsPerDay(total, prevTotal);
+}
+
+// ---- Cups Per Day ----
+// 20g of coffee per cup, so 1kg = 50 cups. Weekly kilos -> cups -> per day.
+const GRAMS_PER_CUP = 20;
+const CUPS_PER_DAY_GOAL = 1000000;
+function renderCupsPerDay(totalKg, prevTotalKg) {
+  const cups = (totalKg * 1000) / GRAMS_PER_CUP;
+  const perDay = cups / 7;
+  const nf = n => n.toLocaleString('en-AU', {maximumFractionDigits: 0});
+
+  document.getElementById('cups-per-day').textContent =
+    perDay.toLocaleString('en-AU', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+
+  document.getElementById('cups-working').textContent =
+    `${fmtKg(totalKg)} × 1000 ÷ ${GRAMS_PER_CUP}g = ${nf(cups)} cups ÷ 7 days`;
+
+  const pct = perDay / CUPS_PER_DAY_GOAL * 100;
+  document.getElementById('cups-goal-fill').style.width = Math.min(100, pct) + '%';
+  document.getElementById('cups-goal-pct').textContent =
+    pct.toFixed(pct < 1 ? 2 : 1) + '% of goal';
 }
 
 function renderBlendCards(row, prev, blends, containerId) {
