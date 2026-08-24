@@ -104,8 +104,34 @@ tbody td{padding:.75rem 1rem;color:var(--indigo);vertical-align:middle}
 .stat-value{font-size:1.25rem;font-weight:700}
 .empty{text-align:center;padding:3rem;color:var(--muted);font-size:.85rem}
 footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter-spacing:.05em}
+/* ---- RESPONSIVE ---- */
 @media(max-width:900px){.scorecard{grid-template-columns:repeat(2,1fr)}.charts-row{grid-template-columns:1fr}}
-@media(max-width:600px){.scorecard{grid-template-columns:1fr};main{padding:1rem}}
+@media(max-width:700px){
+  /* Header: unstick and wrap to two rows so nothing truncates */
+  header{position:static;height:auto;padding:.7rem 1rem;flex-wrap:wrap;gap:.5rem .75rem}
+  .logo{font-size:.62rem;letter-spacing:.14em;line-height:1.4}
+  .header-right{width:100%;justify-content:space-between;gap:.75rem}
+  #last-updated{font-size:.65rem}
+  main{padding:1.1rem}
+  .section-hd{margin-top:1.5rem}
+  /* Week buttons swipe sideways instead of wrapping into a tall block */
+  .week-bar{flex-direction:column;align-items:flex-start;gap:.6rem}
+  .week-selector{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;padding-bottom:.3rem}
+  .week-btn{flex:0 0 auto}
+  /* 11-column partner table scrolls horizontally rather than crushing */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #partner-table{min-width:940px}
+  .late-name{width:110px}
+  .modal{padding:1.25rem;width:96vw;max-height:88vh}
+  .modal-stats{grid-template-columns:repeat(2,1fr);gap:.7rem}
+  .modal-title{font-size:1rem}
+}
+@media(max-width:600px){
+  .scorecard{grid-template-columns:repeat(2,1fr);gap:.7rem}
+  .card{padding:.9rem 1rem}
+  .card-value{font-size:1.5rem}
+  .card-sub{font-size:.68rem}
+}
 </style>
 </head>
 <body>

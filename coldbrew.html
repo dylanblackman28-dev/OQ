@@ -84,8 +84,36 @@ main{max-width:1100px;margin:0 auto;padding:2rem;display:none}
 .warn-title{font-size:.75rem;font-weight:700;color:var(--coral);margin-bottom:.5rem}
 .warn-row{font-size:.78rem;font-family:'DM Mono',monospace;color:var(--indigo);padding:.2rem 0}
 footer{text-align:center;padding:2rem;font-size:.67rem;color:var(--muted);letter-spacing:.05em}
+/* ---- RESPONSIVE ---- */
 @media(max-width:800px){.brew-value{font-size:2.2rem}.pack-body{padding:.25rem 1rem 1.1rem}}
-@media(max-width:640px){.pack-table th.col-omo,.pack-table th.col-placed,.pack-table td.pt-omo,.pack-table td.pt-placed{display:none}}
+@media(max-width:700px){
+  /* Header: unstick and wrap to two rows so nothing truncates */
+  header{position:static;height:auto;padding:.7rem 1rem;flex-wrap:wrap;gap:.5rem .75rem}
+  .logo{font-size:.62rem;letter-spacing:.14em;line-height:1.4}
+  .header-right{width:100%;justify-content:space-between;gap:.75rem}
+  #last-updated{font-size:.65rem}
+  main{padding:1.1rem}
+  .section-hd{margin-top:1.5rem}
+  /* Week buttons swipe sideways instead of wrapping into a tall block */
+  .week-bar{flex-direction:column;align-items:flex-start;gap:.6rem}
+  .week-selector{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;padding-bottom:.3rem}
+  .week-btn{flex:0 0 auto}
+  /* Brew hero stacks: total on top, the three splits in a row beneath */
+  .brew-hero{padding:1.3rem 1.25rem;flex-direction:column;align-items:flex-start;gap:1.1rem}
+  .brew-splits{width:100%;justify-content:space-between;gap:1rem}
+  .brew-split{text-align:left}
+  .bs-value{font-size:1.15rem}
+  /* Delivery rows stack so long venue names don't collide with the item list */
+  .deliv-row{flex-direction:column;gap:.25rem}
+  .deliv-items{text-align:left}
+  .pack-head{padding:.6rem 1rem}
+}
+@media(max-width:640px){
+  .pack-table th.col-omo,.pack-table th.col-placed,.pack-table td.pt-omo,.pack-table td.pt-placed{display:none}
+  .pack-table td{padding:.55rem .35rem}
+  .pt-cust{font-size:.9rem}
+  .brew-value{font-size:2rem}
+}
 </style>
 </head>
 <body>

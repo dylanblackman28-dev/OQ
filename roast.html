@@ -139,8 +139,39 @@ tbody td.name-col{font-family:'Clash Grotesk',sans-serif;font-weight:600;font-si
 
 footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter-spacing:.05em}
 
+/* ---- RESPONSIVE ---- */
 @media(max-width:900px){.scorecard{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.scorecard{grid-template-columns:1fr};main{padding:1rem}}
+@media(max-width:700px){
+  /* Header: unstick and wrap to two rows so nothing truncates */
+  header{position:static;height:auto;padding:.7rem 1rem;flex-wrap:wrap;gap:.5rem .75rem}
+  .logo{font-size:.62rem;letter-spacing:.14em;line-height:1.4}
+  .header-right{width:100%;justify-content:space-between;gap:.75rem}
+  #last-updated{font-size:.65rem}
+  main{padding:1.1rem}
+  .section-hd{margin-top:1.5rem}
+  /* Week buttons swipe sideways instead of wrapping into a tall block */
+  .week-bar{flex-direction:column;align-items:flex-start;gap:.6rem}
+  .week-selector{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;padding-bottom:.3rem}
+  .week-btn{flex:0 0 auto}
+  .blend-grid{grid-template-columns:1fr;gap:.75rem}
+  /* Wide history table scrolls horizontally rather than crushing */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:880px}
+  .chart-wrap{height:180px}
+  .modal{padding:1.25rem;width:96vw;max-height:88vh}
+  #cb-modal-body{overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
+@media(max-width:600px){
+  .scorecard{grid-template-columns:repeat(2,1fr);gap:.7rem}
+  .card{padding:.9rem 1rem}
+  .card-value{font-size:1.5rem}
+  .blend-kg{font-size:1.9rem}
+  /* Drop the least critical modal column (Placed) — Delivery matters more */
+  .cb-modal-table th:nth-child(3),.cb-modal-table td:nth-child(3){display:none}
+}
+@media(max-width:430px){
+  .cb-modal-table th:nth-child(2),.cb-modal-table td:nth-child(2){display:none}
+}
 </style>
 </head>
 <body>
