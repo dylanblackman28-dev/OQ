@@ -437,8 +437,9 @@ def refresh_order_summary(sb, partner_id):
 
 # ── First order date ──────────────────────────────────────────────────────────
 def get_first_order_date(retailer_id):
+    # Optional enrichment — a miss here must not fail the whole sync
     url = f"https://api.ordermentum.com/v1/purchasers/{retailer_id}"
-    data = om_get(url, required=True)
+    data = om_get(url)
     if data:
         activated = data.get("activatedAt") or data.get("firstOrderedAt")
         if activated:
