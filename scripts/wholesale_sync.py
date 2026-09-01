@@ -11,7 +11,7 @@ import os
 import re
 import time
 import json
-import urllib.request
+import urllib.request, urllib.error
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
@@ -20,8 +20,7 @@ from supabase import create_client
 # ── Config ────────────────────────────────────────────────────────────────────
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-OM_USERNAME  = os.environ["OM_USERNAME"]
-OM_PASSWORD  = os.environ["OM_PASSWORD"]
+OM_API_KEY   = os.environ["OM_API_KEY"]
 SUPPLIER_ID  = "71bf79dc-4e3d-41b2-b232-6ebe51a297ab"
 
 AEST = timezone(timedelta(hours=10))
@@ -73,22 +72,38 @@ TRACKED_PARTNERS = {
 }
 
 # ── Ordermentum helpers ───────────────────────────────────────────────────────
-def om_auth():
-    data = json.dumps({"username": OM_USERNAME, "password": OM_PASSWORD}).encode()
-    req = urllib.request.Request(
-        "https://app.ordermentum.com/v1/auth", data=data,
-        headers={"Content-Type": "application/json"}
-    )
-    return json.loads(urllib.request.urlopen(req).read().decode())["access_token"]
 
-
-def om_get(url, token):
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+def om_get(url):
+    req = urllib.request.Request(url, headers={"x-api-key": OM_API_KEY})
     try:
         return json.loads(urllib.request.urlopen(req).read().decode())
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            raise SystemExit(f"Ordermentum auth failed ({e.code}) for {url} — check OM_API_KEY")
+        print(f"  Warning: GET failed for {url}: {e}")
+        return {}
     except Exception as e:
         print(f"  Warning: GET failed for {url}: {e}")
         return {}
+
+
+def om_pages(meta, page_size, got):
+    """
+    Last page number, tolerant of either meta shape.
+    app.ordermentum.com/v2 returned meta.totalPages; api.ordermentum.com/v2 is
+    documented as meta.totalResults/pageSize/pageNo. If neither is present we
+    fall back to "keep going while the page came back full", so a missing field
+    can never silently truncate a sync to one page.
+    """
+    if not isinstance(meta, dict):
+        return None
+    if meta.get("totalPages"):
+        return int(meta["totalPages"])
+    total = meta.get("totalResults")
+    size = meta.get("pageSize") or page_size
+    if total and size:
+        return -(-int(total) // int(size))   # ceil
+    return None
 
 
 def is_whs_coffee_sku(sku):
@@ -187,23 +202,24 @@ def is_in_late_window(created_at_str):
 
 
 # ── Pull orders ───────────────────────────────────────────────────────────────
-def pull_orders(token, start_utc, end_utc):
+def pull_orders(start_utc, end_utc):
     all_orders = []
     page = 1
     while True:
         url = (
-            f"https://app.ordermentum.com/v2/orders"
+            f"https://api.ordermentum.com/v2/orders"
             f"?supplierId={SUPPLIER_ID}"
             f"&createdAt[gte]={start_utc}"
             f"&createdAt[lte]={end_utc}"
             f"&pageSize=50&pageNo={page}"
         )
-        data = om_get(url, token)
+        data = om_get(url)
         orders = data.get("data", [])
         all_orders.extend(orders)
-        total_pages = data.get("meta", {}).get("totalPages", 1)
-        print(f"  Orders page {page}/{total_pages} ({len(all_orders)} so far)")
-        if page >= total_pages:
+        total_pages = om_pages(data.get("meta"), 50, len(orders))
+        print(f"  Orders page {page}/{total_pages or '?'} ({len(all_orders)} so far)")
+        if (total_pages is not None and page >= total_pages) or \
+           (total_pages is None and len(orders) < 50):
             break
         page += 1
         time.sleep(0.2)
@@ -211,7 +227,7 @@ def pull_orders(token, start_utc, end_utc):
 
 
 # ── Process line items ────────────────────────────────────────────────────────
-def process_orders(all_orders, token):
+def process_orders(all_orders):
     """
     Only processes orders from TRACKED_PARTNERS.
     Only counts OQ-COF-WHS SKUs for kg and late flag.
@@ -238,7 +254,7 @@ def process_orders(all_orders, token):
             continue
 
         detail = om_get(
-            f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
+            f"https://api.ordermentum.com/v1/orders/{order['id']}")
 
         # Calculate WHS BLEND kg for this order. Only the three tracked blends
         # count toward kg; every other wholesale coffee (single origins, limited
@@ -387,9 +403,9 @@ def refresh_order_summary(sb, partner_id):
 
 
 # ── First order date ──────────────────────────────────────────────────────────
-def get_first_order_date(token, retailer_id):
+def get_first_order_date(retailer_id):
     url = f"https://api.ordermentum.com/v1/purchasers/{retailer_id}"
-    data = om_get(url, token)
+    data = om_get(url)
     if data:
         activated = data.get("activatedAt") or data.get("firstOrderedAt")
         if activated:
@@ -402,23 +418,23 @@ def get_first_order_date(token, retailer_id):
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
-def sync_week(token, sb, weeks_ago):
+def sync_week(sb, weeks_ago):
     start_utc, end_utc, week_start_date = ordering_week_range(weeks_ago)
     print(f"\n[week] Pulling orders for week: "
           f"{week_start_date} -> {week_start_date + timedelta(days=6)}")
     print(f"  UTC window: {start_utc} -> {end_utc}")
 
-    all_orders = pull_orders(token, start_utc, end_utc)
+    all_orders = pull_orders(start_utc, end_utc)
     print(f"  {len(all_orders)} orders pulled ✓")
 
     print(f"  Processing (tracked partners + OQ-COF-WHS SKUs only)...")
-    partner_data = process_orders(all_orders, token)
+    partner_data = process_orders(all_orders)
     print(f"  {len(partner_data)} partners with WHS coffee orders ✓")
 
     for retailer_id, data in partner_data.items():
         print(f"  → {data['name']}: {data['kg']:.1f}kg, "
               f"{data['order_count']} orders, {data['late_count']} late")
-        first_date = get_first_order_date(token, retailer_id)
+        first_date = get_first_order_date(retailer_id)
         time.sleep(0.1)
         partner_id = upsert_partner(
             sb, retailer_id, data["name"], first_date)
@@ -447,10 +463,6 @@ def main():
               f"{backfill_offset + backfill_weeks} ago")
     print("=" * 60)
 
-    print("\n[1/3] Authenticating with Ordermentum...")
-    token = om_auth()
-    print("  Authenticated ✓")
-
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     print(f"\n[2/3] Syncing week(s)...")
@@ -462,7 +474,7 @@ def main():
         # Normal run: previous week (late orders) + current open week
         week_offsets = (1, 0)
     for weeks_ago in week_offsets:
-        sync_week(token, sb, weeks_ago)
+        sync_week(sb, weeks_ago)
 
     # Write sync timestamp so dashboard can show "last updated by workflow"
     sb.table("sync_log").upsert({

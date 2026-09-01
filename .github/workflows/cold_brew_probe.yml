@@ -22,7 +22,6 @@ jobs:
 
       - name: Run probe
         env:
-          OM_USERNAME: ${{ secrets.OM_USERNAME }}
-          OM_PASSWORD: ${{ secrets.OM_PASSWORD }}
+          OM_API_KEY: ${{ secrets.OM_API_KEY }}
           PROBE_WEEKS: ${{ inputs.probe_weeks || '4' }}
         run: python scripts/cold_brew_probe.py

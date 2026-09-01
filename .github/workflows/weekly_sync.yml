@@ -43,8 +43,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          OM_USERNAME: ${{ secrets.OM_USERNAME }}
-          OM_PASSWORD: ${{ secrets.OM_PASSWORD }}
+          OM_API_KEY: ${{ secrets.OM_API_KEY }}
           BACKFILL_WEEKS: ${{ inputs.backfill_weeks || '0' }}
           BACKFILL_OFFSET: ${{ inputs.backfill_offset || '0' }}
         run: python scripts/wholesale_sync.py

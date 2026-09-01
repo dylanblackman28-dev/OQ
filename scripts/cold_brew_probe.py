@@ -9,8 +9,7 @@ import os, json, time, urllib.request
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 
-OM_USERNAME = os.environ["OM_USERNAME"]
-OM_PASSWORD = os.environ["OM_PASSWORD"]
+OM_API_KEY  = os.environ["OM_API_KEY"]
 SUPPLIER_ID = "71bf79dc-4e3d-41b2-b232-6ebe51a297ab"
 PROBE_WEEKS = int(os.environ.get("PROBE_WEEKS", "4") or 4)
 
@@ -25,20 +24,35 @@ VARIANTS = {
     "OQ-CLD-BR-10LT":  ("10L Nitro Bucket (Winter)", 10.0, True),
 }
 
-
-def om_auth():
-    data = json.dumps({"username": OM_USERNAME, "password": OM_PASSWORD}).encode()
-    req = urllib.request.Request("https://app.ordermentum.com/v1/auth", data=data,
-        headers={"Content-Type": "application/json"})
-    return json.loads(urllib.request.urlopen(req, timeout=15).read().decode())["access_token"]
-
-
-def om_get(url, token):
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+def om_get(url):
+    req = urllib.request.Request(url, headers={"x-api-key": OM_API_KEY})
     try:
         return json.loads(urllib.request.urlopen(req, timeout=15).read().decode())
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            raise SystemExit(f"Ordermentum auth failed ({e.code}) for {url} — check OM_API_KEY")
+        return {}
     except Exception:
         return {}
+
+
+def om_pages(meta, page_size, got):
+    """
+    Last page number, tolerant of either meta shape.
+    app.ordermentum.com/v2 returned meta.totalPages; api.ordermentum.com/v2 is
+    documented as meta.totalResults/pageSize/pageNo. If neither is present we
+    fall back to "keep going while the page came back full", so a missing field
+    can never silently truncate a sync to one page.
+    """
+    if not isinstance(meta, dict):
+        return None
+    if meta.get("totalPages"):
+        return int(meta["totalPages"])
+    total = meta.get("totalResults")
+    size = meta.get("pageSize") or page_size
+    if total and size:
+        return -(-int(total) // int(size))   # ceil
+    return None
 
 
 def ordering_week_range(weeks_ago=0):
@@ -56,15 +70,17 @@ def ordering_week_range(weeks_ago=0):
             week_start.date())
 
 
-def probe_week(token, weeks_ago):
+def probe_week(weeks_ago):
     start_utc, end_utc, week_start = ordering_week_range(weeks_ago)
     orders, page = [], 1
     while True:
-        data = om_get(f"https://app.ordermentum.com/v2/orders?supplierId={SUPPLIER_ID}"
+        data = om_get(f"https://api.ordermentum.com/v2/orders?supplierId={SUPPLIER_ID}"
                       f"&createdAt[gte]={start_utc}&createdAt[lte]={end_utc}"
-                      f"&pageSize=50&pageNo={page}", token)
-        orders.extend(data.get("data", []))
-        if page >= data.get("meta", {}).get("totalPages", 1):
+                      f"&pageSize=50&pageNo={page}")
+        batch = data.get("data", [])
+        orders.extend(batch)
+        last = om_pages(data.get("meta"), 50, len(batch))
+        if (last is not None and page >= last) or (last is None and len(batch) < 50):
             break
         page += 1
         time.sleep(0.2)
@@ -79,7 +95,7 @@ def probe_week(token, weeks_ago):
             continue
         retailer = (order.get("retailerName") or order.get("retailer", {}).get("name") or "?")
         is_venue = any(v in retailer.lower() for v in OQ_VENUES)
-        detail = om_get(f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
+        detail = om_get(f"https://api.ordermentum.com/v1/orders/{order['id']}")
         for item in detail.get("lineItems", []):
             sku = (item.get("SKU", "") or "").upper()
             name = item.get("name", "") or ""
@@ -121,9 +137,8 @@ def main():
     print("=" * 60)
     print(f"Cold Brew Probe (read-only) — last {PROBE_WEEKS} weeks incl. current")
     print("=" * 60)
-    token = om_auth()
     for weeks_ago in range(PROBE_WEEKS - 1, -1, -1):
-        probe_week(token, weeks_ago)
+        probe_week(weeks_ago)
 
 
 if __name__ == "__main__":

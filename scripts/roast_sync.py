@@ -10,8 +10,7 @@ from supabase import create_client
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-OM_USERNAME  = os.environ["OM_USERNAME"]
-OM_PASSWORD  = os.environ["OM_PASSWORD"]
+OM_API_KEY   = os.environ["OM_API_KEY"]
 SUPPLIER_ID  = "71bf79dc-4e3d-41b2-b232-6ebe51a297ab"
 
 AEST = timezone(timedelta(hours=10))
@@ -31,18 +30,35 @@ CB_VARIANTS = {
     "OQ-CLD-BR-10LT":  ("cb_nitro_10lt_qty", 10.0),  # Nitro — OQ Ballina winter
 }
 
-def om_auth():
-    data = json.dumps({"username": OM_USERNAME, "password": OM_PASSWORD}).encode()
-    req = urllib.request.Request("https://app.ordermentum.com/v1/auth", data=data,
-        headers={"Content-Type": "application/json"})
-    return json.loads(urllib.request.urlopen(req, timeout=15).read().decode())["access_token"]
-
-def om_get(url, token):
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+def om_get(url):
+    req = urllib.request.Request(url, headers={"x-api-key": OM_API_KEY})
     try:
         return json.loads(urllib.request.urlopen(req, timeout=15).read().decode())
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            raise SystemExit(f"Ordermentum auth failed ({e.code}) for {url} — check OM_API_KEY")
+        return {}
     except:
         return {}
+
+
+def om_pages(meta, page_size, got):
+    """
+    Last page number, tolerant of either meta shape.
+    app.ordermentum.com/v2 returned meta.totalPages; api.ordermentum.com/v2 is
+    documented as meta.totalResults/pageSize/pageNo. If neither is present we
+    fall back to "keep going while the page came back full", so a missing field
+    can never silently truncate a sync to one page.
+    """
+    if not isinstance(meta, dict):
+        return None
+    if meta.get("totalPages"):
+        return int(meta["totalPages"])
+    total = meta.get("totalResults")
+    size = meta.get("pageSize") or page_size
+    if total and size:
+        return -(-int(total) // int(size))   # ceil
+    return None
 
 def ordering_week_range(weeks_ago=0):
     """
@@ -124,7 +140,7 @@ def extract_kg(name, qty):
 def is_venue_order(retailer_name):
     return any(v in (retailer_name or "").lower() for v in OQ_VENUES)
 
-def sync_week(token, sb, weeks_ago):
+def sync_week(sb, weeks_ago):
     start_utc, end_utc, week_start_date = ordering_week_range(weeks_ago)
     label = "current (open)" if weeks_ago == 0 else "previous (late orders)"
     print(f"\n[{label}] Pulling orders: {week_start_date} → {week_start_date + timedelta(days=6)}")
@@ -133,15 +149,16 @@ def sync_week(token, sb, weeks_ago):
     all_orders = []
     page = 1
     while True:
-        url = (f"https://app.ordermentum.com/v2/orders"
+        url = (f"https://api.ordermentum.com/v2/orders"
                f"?supplierId={SUPPLIER_ID}"
                f"&createdAt[gte]={start_utc}"
                f"&createdAt[lte]={end_utc}"
                f"&pageSize=50&pageNo={page}")
-        data = om_get(url, token)
-        all_orders.extend(data.get("data", []))
-        total = data.get("meta", {}).get("totalPages", 1)
-        if page >= total: break
+        data = om_get(url)
+        batch = data.get("data", [])
+        all_orders.extend(batch)
+        last = om_pages(data.get("meta"), 50, len(batch))
+        if (last is not None and page >= last) or (last is None and len(batch) < 50): break
         page += 1
         time.sleep(0.2)
     print(f"  {len(all_orders)} orders pulled")
@@ -167,7 +184,7 @@ def sync_week(token, sb, weeks_ago):
     for order in all_orders:
         if order.get("cancelled"): continue
         order_count += 1
-        detail = om_get(f"https://app.ordermentum.com/v1/orders/{order['id']}", token)
+        detail = om_get(f"https://api.ordermentum.com/v1/orders/{order['id']}")
         order_has_rising_sun = False
         retailer_name = order.get("retailerName", "") or ""
         order_number = order.get("orderNumber") or order.get("number") or None
@@ -300,10 +317,6 @@ def main():
               f"{backfill_offset + backfill_weeks} ago")
     print("=" * 55)
 
-    print("\n[1/3] Authenticating...")
-    token = om_auth()
-    print("  OK")
-
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     print("\n[2/3] Syncing week(s)...")
@@ -314,7 +327,7 @@ def main():
         # Normal run: previous week (late orders) + current open week
         week_offsets = (1, 0)
     for weeks_ago in week_offsets:
-        sync_week(token, sb, weeks_ago)
+        sync_week(sb, weeks_ago)
 
     # Write sync timestamp so dashboard can show "last updated by workflow"
     sb.table("sync_log").upsert({
