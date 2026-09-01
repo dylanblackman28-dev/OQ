@@ -102,13 +102,27 @@ def main():
             else:
                 print(f"    {label:16s} HTTP {st}  body={str(d)[:160]}")
 
-    # 3. How many orders in the week actually return line items via v1?
-    print(f"\n[3] v1 detail coverage across all {len(orders)} listed orders")
+    # 3. Replicate the sync's own classification against every order, so a
+    #    mismatch against the dashboard points at logic vs. transport.
+    print(f"\n[3] Per-order kg using roast_sync's own classify()/extract_kg()")
+    os.environ.setdefault("SUPABASE_URL", "x")
+    os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "x")
+    import sys, importlib.util
+    sys.modules["supabase"] = type(sys)("supabase")
+    sys.modules["supabase"].create_client = lambda *a, **k: None
+    spec = importlib.util.spec_from_file_location(
+        "roast", os.path.join(os.path.dirname(__file__), "roast_sync.py"))
+    roast = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(roast)
+
     ok = empty = fail = 0
+    grand = 0.0
     for o in orders:
         st, d = fetch(f"https://api.ordermentum.com/v1/orders/{o.get('id')}")
+        num = o.get("orderNumber") or o.get("number")
         if not isinstance(d, dict):
             fail += 1
+            print(f"    {num:10s} DETAIL FAILED (HTTP {st})")
             continue
         inner = d.get("data") if isinstance(d.get("data"), dict) else d
         li = inner.get("lineItems") or inner.get("items") or []
@@ -116,9 +130,17 @@ def main():
             ok += 1
         else:
             empty += 1
-    print(f"    with line items : {ok}")
+        kg = 0.0
+        for it in li:
+            f = roast.classify(it.get("name", ""), it.get("SKU", ""))
+            if f:
+                kg += roast.extract_kg(it.get("name", ""), it.get("quantity", 0) or 0)
+        grand += kg
+        print(f"    {num:10s} lines={len(li):3d}  kg={kg:8.2f}")
+    print(f"\n    with line items : {ok}")
     print(f"    empty           : {empty}")
     print(f"    request failed  : {fail}")
+    print(f"    TOTAL KG (all orders, roast classification): {grand:.2f}kg")
 
 
 if __name__ == "__main__":
