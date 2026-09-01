@@ -3,7 +3,7 @@ OQ Roast Plan Weekly Sync
 Runs every Tuesday 6:30am AEST via GitHub Actions.
 """
 
-import os, re, json, time, urllib.request
+import os, re, json, time, random, urllib.request
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 from supabase import create_client
@@ -30,17 +30,51 @@ CB_VARIANTS = {
     "OQ-CLD-BR-10LT":  ("cb_nitro_10lt_qty", 10.0),  # Nitro — OQ Ballina winter
 }
 
-def om_get(url):
-    req = urllib.request.Request(url, headers={"x-api-key": OM_API_KEY})
-    try:
-        return json.loads(urllib.request.urlopen(req, timeout=15).read().decode())
-    except urllib.error.HTTPError as e:
-        if e.code in (401, 403):
-            raise SystemExit(f"Ordermentum auth failed ({e.code}) for {url} — check OM_API_KEY")
-        return {}
-    except:
-        return {}
+class OMFetchError(RuntimeError):
+    """A fetch we cannot proceed without (silently skipping it corrupts totals)."""
 
+
+def om_get(url, required=False, attempts=6):
+    """
+    GET with retry + backoff.
+
+    Ordermentum rate-limits (HTTP 429). A swallowed 429 makes an order look like
+    it has no line items, so order counts stay correct while kilos silently
+    collapse — exactly the failure that understated the 25 Aug week. Anything we
+    cannot do without is fetched with required=True, which raises rather than
+    returning empty, so the run fails loudly instead of writing wrong numbers.
+    """
+    delay = 2.0
+    last = "unknown"
+    for _ in range(attempts):
+        req = urllib.request.Request(url, headers={"x-api-key": OM_API_KEY})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            last = f"HTTP {e.code}"
+            if e.code in (401, 403):
+                raise SystemExit(
+                    f"Ordermentum auth failed ({e.code}) for {url} — check OM_API_KEY")
+            if e.code == 429 or e.code >= 500:
+                retry_after = (e.headers or {}).get("Retry-After")
+                try:
+                    wait = float(retry_after)
+                except (TypeError, ValueError):
+                    wait = delay
+                time.sleep(min(wait, 60) + random.uniform(0, 0.4))
+                delay = min(delay * 2, 60)
+                continue
+            break
+        except Exception as e:
+            last = str(e)[:120]
+            time.sleep(delay)
+            delay = min(delay * 2, 60)
+    if required:
+        raise OMFetchError(f"Ordermentum fetch failed after {attempts} attempts "
+                           f"({last}): {url}")
+    print(f"  Warning: GET failed for {url}: {last}")
+    return {}
 
 def om_pages(meta, page_size, got):
     """
@@ -154,7 +188,7 @@ def sync_week(sb, weeks_ago):
                f"&createdAt[gte]={start_utc}"
                f"&createdAt[lte]={end_utc}"
                f"&pageSize=50&pageNo={page}")
-        data = om_get(url)
+        data = om_get(url, required=True)
         batch = data.get("data", [])
         all_orders.extend(batch)
         last = om_pages(data.get("meta"), 50, len(batch))
@@ -184,7 +218,7 @@ def sync_week(sb, weeks_ago):
     for order in all_orders:
         if order.get("cancelled"): continue
         order_count += 1
-        detail = om_get(f"https://api.ordermentum.com/v1/orders/{order['id']}")
+        detail = om_get(f"https://api.ordermentum.com/v1/orders/{order['id']}", required=True)
         order_has_rising_sun = False
         retailer_name = order.get("retailerName", "") or ""
         order_number = order.get("orderNumber") or order.get("number") or None
@@ -252,7 +286,7 @@ def sync_week(sb, weeks_ago):
                 rising_sun_dates.append(dt.strftime("%d/%m/%y"))
             except Exception:
                 pass
-        time.sleep(0.1)
+        time.sleep(0.5)
 
     print(f"  {order_count} orders processed")
     for field, kg in sorted(totals.items()):

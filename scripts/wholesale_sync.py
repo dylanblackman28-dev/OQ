@@ -7,7 +7,7 @@ Late order: placed Tuesday 00:01 -> Wednesday 23:59 AEST AND contains OQ-COF-WHS
 Only tracked partners (TRACKED_PARTNERS) are processed. All others ignored.
 """
 
-import os
+import os, random
 import re
 import time
 import json
@@ -73,18 +73,51 @@ TRACKED_PARTNERS = {
 
 # ── Ordermentum helpers ───────────────────────────────────────────────────────
 
-def om_get(url):
-    req = urllib.request.Request(url, headers={"x-api-key": OM_API_KEY})
-    try:
-        return json.loads(urllib.request.urlopen(req).read().decode())
-    except urllib.error.HTTPError as e:
-        if e.code in (401, 403):
-            raise SystemExit(f"Ordermentum auth failed ({e.code}) for {url} — check OM_API_KEY")
-        print(f"  Warning: GET failed for {url}: {e}")
-        return {}
-    except Exception as e:
-        print(f"  Warning: GET failed for {url}: {e}")
-        return {}
+class OMFetchError(RuntimeError):
+    """A fetch we cannot proceed without (silently skipping it corrupts totals)."""
+
+
+def om_get(url, required=False, attempts=6):
+    """
+    GET with retry + backoff.
+
+    Ordermentum rate-limits (HTTP 429). A swallowed 429 makes an order look like
+    it has no line items, so order counts stay correct while kilos silently
+    collapse — exactly the failure that understated the 25 Aug week. Anything we
+    cannot do without is fetched with required=True, which raises rather than
+    returning empty, so the run fails loudly instead of writing wrong numbers.
+    """
+    delay = 2.0
+    last = "unknown"
+    for _ in range(attempts):
+        req = urllib.request.Request(url, headers={"x-api-key": OM_API_KEY})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            last = f"HTTP {e.code}"
+            if e.code in (401, 403):
+                raise SystemExit(
+                    f"Ordermentum auth failed ({e.code}) for {url} — check OM_API_KEY")
+            if e.code == 429 or e.code >= 500:
+                retry_after = (e.headers or {}).get("Retry-After")
+                try:
+                    wait = float(retry_after)
+                except (TypeError, ValueError):
+                    wait = delay
+                time.sleep(min(wait, 60) + random.uniform(0, 0.4))
+                delay = min(delay * 2, 60)
+                continue
+            break
+        except Exception as e:
+            last = str(e)[:120]
+            time.sleep(delay)
+            delay = min(delay * 2, 60)
+    if required:
+        raise OMFetchError(f"Ordermentum fetch failed after {attempts} attempts "
+                           f"({last}): {url}")
+    print(f"  Warning: GET failed for {url}: {last}")
+    return {}
 
 
 def om_pages(meta, page_size, got):
@@ -213,7 +246,7 @@ def pull_orders(start_utc, end_utc):
             f"&createdAt[lte]={end_utc}"
             f"&pageSize=50&pageNo={page}"
         )
-        data = om_get(url)
+        data = om_get(url, required=True)
         orders = data.get("data", [])
         all_orders.extend(orders)
         total_pages = om_pages(data.get("meta"), 50, len(orders))
@@ -254,7 +287,7 @@ def process_orders(all_orders):
             continue
 
         detail = om_get(
-            f"https://api.ordermentum.com/v1/orders/{order['id']}")
+            f"https://api.ordermentum.com/v1/orders/{order['id']}", required=True)
 
         # Calculate WHS BLEND kg for this order. Only the three tracked blends
         # count toward kg; every other wholesale coffee (single origins, limited
@@ -305,7 +338,7 @@ def process_orders(all_orders):
 
         if (i + 1) % 10 == 0:
             print(f"  Processed {i+1}/{len(all_orders)} orders...")
-        time.sleep(0.15)
+        time.sleep(0.5)
 
     return partner_data
 
@@ -405,7 +438,7 @@ def refresh_order_summary(sb, partner_id):
 # ── First order date ──────────────────────────────────────────────────────────
 def get_first_order_date(retailer_id):
     url = f"https://api.ordermentum.com/v1/purchasers/{retailer_id}"
-    data = om_get(url)
+    data = om_get(url, required=True)
     if data:
         activated = data.get("activatedAt") or data.get("firstOrderedAt")
         if activated:
