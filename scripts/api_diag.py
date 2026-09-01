@@ -62,6 +62,15 @@ def main():
     if not orders:
         print("    no orders — nothing further to test")
         return
+    print(f"    order numbers + createdAt (AEST):")
+    for o in sorted(orders, key=lambda x: x.get("createdAt") or ""):
+        ca = o.get("createdAt") or ""
+        try:
+            ca = datetime.fromisoformat(ca.replace("Z", "+00:00")).astimezone(AEST).strftime("%a %d %b %H:%M")
+        except Exception:
+            pass
+        print(f"      {o.get('orderNumber') or o.get('number'):10s} created {ca:18s} "
+              f"lineCount={o.get('lineCount')} {(o.get('retailerName') or '')[:28]}")
     print(f"    order object keys: {sorted(orders[0].keys())}")
     # does the list already carry line items?
     for key in ("lineItems", "items", "orderItems", "products"):
