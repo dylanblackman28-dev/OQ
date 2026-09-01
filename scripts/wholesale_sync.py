@@ -69,6 +69,7 @@ TRACKED_PARTNERS = {
     "03b08341-ee46-4560-954c-865e58c15a1b": "North Coast Community College",
     "16d0ded8-95aa-4d65-b350-442384dd6173": "Bob's Tacos",
     "711e1512-494c-4970-ac75-7a93861394ae": "Raised Cold Brew",
+    "09a3cc3a-9d7a-461a-a2dd-192c164b201f": "Ash's Road Show",
 }
 
 # ── Ordermentum helpers ───────────────────────────────────────────────────────
