@@ -1,0 +1,27 @@
+name: Ordermentum API Diagnostic (read-only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      weeks_ago:
+        description: 'Which ordering week to test (0 = current open week, 1 = last week)'
+        required: false
+        default: '1'
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run diagnostic
+        env:
+          OM_API_KEY: ${{ secrets.OM_API_KEY }}
+          WEEKS_AGO: ${{ inputs.weeks_ago || '1' }}
+        run: python scripts/api_diag.py
