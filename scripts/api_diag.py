@@ -70,7 +70,8 @@ def main():
         except Exception:
             pass
         print(f"      {o.get('orderNumber') or o.get('number'):10s} created {ca:18s} "
-              f"lineCount={o.get('lineCount')} {(o.get('retailerName') or '')[:28]}")
+              f"lineCount={o.get('lineCount')} {(o.get('retailerName') or '')[:30]:30s} "
+              f"retailerId={o.get('retailerId')}")
     print(f"    order object keys: {sorted(orders[0].keys())}")
     # does the list already carry line items?
     for key in ("lineItems", "items", "orderItems", "products"):
