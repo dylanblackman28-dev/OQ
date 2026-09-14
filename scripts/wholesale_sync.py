@@ -186,11 +186,19 @@ def is_tracked_blend(name, sku):
 
     Tracked blends (confirmed by Dylan, Jul 2026): Village Blend, Cloud Nine,
     Euphoria. Decaf is excluded even when it's a decaf version of a blend.
+    Rising Sun's white-label blend was added Sep 2026 — see below.
     """
     n = (name or "").lower()
     s = (sku or "").upper()
     if "decaf" in n or "-DC-" in s or "-DEC" in s:
         return False
+    # Rising Sun's own blend: OQ green beans, roasted and blended by OQ, packed
+    # under their white label. A core recurring blend, so it counts as blend kg
+    # (Dylan, Sep 2026). Matched by NAME, not SKU token — the token is "MISC"
+    # (OQ-COF-WHS-MISC-1KG), which OQ's own venue cafe coffee also uses, so
+    # allow-listing the token would sweep in venue espresso too.
+    if "rising sun" in n or "-RSR" in s:
+        return True
     # The SKU token (4th segment) is the authority, not the product name.
     # "Laos - PDK Village Natural | Filter Roast" (OQ-COF-WHS-FLT-*) is a single
     # origin whose farm name contains "Village" — name matching counted it as
