@@ -64,6 +64,14 @@ main{max-width:1400px;margin:0 auto;padding:2rem;display:none}
 .bar-fill.current{background:var(--arctic)}
 .bar-fill.prev-year{background:rgba(70,196,220,.3)}
 .bar-label{font-size:.55rem;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap}
+/* RECENT WEEKS STRIP */
+.recent-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:.4rem;margin-bottom:1.5rem}
+.recent-cell{background:var(--surface);border-radius:8px;padding:.55rem .5rem;text-align:center}
+.recent-cell.none{opacity:.55}
+.rc-week{font-size:.6rem;font-family:'DM Mono',monospace;color:var(--muted);margin-bottom:.2rem}
+.rc-kg{font-size:.9rem;font-weight:700;color:var(--indigo);font-family:'DM Mono',monospace}
+.recent-cell.none .rc-kg{font-size:.7rem;font-weight:500;color:var(--muted)}
+@media(max-width:700px){.recent-strip{grid-template-columns:repeat(3,1fr)}}
 /* PARTNER TABLE */
 .table-wrap{background:#fff;border-radius:12px;border:1.5px solid var(--border);overflow:hidden;margin-bottom:1.5rem}
 table{width:100%;border-collapse:collapse;font-size:.82rem}
@@ -223,6 +231,7 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
       <button class="modal-close" onclick="document.getElementById('modal-bg').classList.remove('open')">×</button>
     </div>
     <div class="modal-stats" id="modal-stats"></div>
+    <div id="modal-recent"></div>
     <div class="chart-title">Weekly KG — Full History</div>
     <div class="trend-chart" style="height:160px"><svg class="trend-svg" id="modal-svg"></svg></div>
   </div>
@@ -466,7 +475,9 @@ function renderTable(data) {
     return `<tr onclick="openModal('${d.partner_id}')" style="cursor:pointer">
       <td class="partner-name">${d.name}</td>
       <td><div class="kg-bar-wrap"><div class="kg-bar" style="width:${barW}px"></div><span class="mono">${fmtKg(kg)}</span></div></td>
-      <td>${trendArrow(kg, d.wow)}</td>
+      <td title="${d.wow === null || d.wow === undefined
+        ? 'No order the previous week — nothing to compare against'
+        : 'Previous week: ' + fmtKg(d.wow)}">${trendArrow(kg, d.wow)}</td>
       <td class="mono">${d.rolling4 !== null ? fmtKg(d.rolling4) : '—'}</td>
       <td title="4wk avg ${d.yoyG ? fmtKg(d.yoyG.cur) + ' now vs ' + fmtKg(d.yoyG.prev) + ' a year ago' : 'needs a year of history'}">${d.yoyG ? trendArrow(d.yoyG.cur, d.yoyG.prev) : '<span class="trend-flat mono">—</span>'}</td>
       <td class="mono">${d.order_count}</td>
@@ -586,11 +597,32 @@ function openModal(pid) {
     <div class="stat-box"><div class="stat-label">Avg KG/wk</div><div class="stat-value">${s.avg_kg_per_week ? fmtKg(s.avg_kg_per_week) : '—'}</div></div>
   `;
 
-  // If history spans more than ~11 months, include the year in labels
+  // Recent weeks, including weeks with NO order — a blank WoW in the table
+  // usually means "didn't order last week", not "data missing", and that is
+  // impossible to tell from a 3-year sparkline.
+  const byWeek = {};
+  pw.forEach(w => byWeek[w.week_start] = +w.kg_ordered);
+  const recent = weeks.slice(0, 6).map(w => ({
+    week: w, kg: byWeek[w] || 0, ordered: byWeek[w] > 0,
+  }));
+  const ordersEvery = pw.length > 1
+    ? Math.round((new Date(pw[pw.length-1].week_start) - new Date(pw[0].week_start))
+        / (86400000 * 7) / (pw.length - 1)) : 1;
+  document.getElementById('modal-recent').innerHTML = `
+    <div class="chart-title">Recent weeks${ordersEvery > 1
+      ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0">· orders roughly every ${ordersEvery} weeks</span>` : ''}</div>
+    <div class="recent-strip">${recent.map(r => `
+      <div class="recent-cell${r.ordered ? '' : ' none'}">
+        <div class="rc-week">${weekLabel(r.week).split(' – ')[0]}</div>
+        <div class="rc-kg">${r.ordered ? fmtKg(r.kg) : 'no order'}</div>
+      </div>`).join('')}</div>`;
+
+  // Month + FULL year on the axis: "Apr 26" reads as 26 April, which made a
+  // multi-year history look like clustered days in one month.
   const spanMs = pw.length > 1
     ? new Date(pw[pw.length-1].week_start).getTime() - new Date(pw[0].week_start).getTime() : 0;
   const labelOpts = spanMs > 330*24*3600*1000
-    ? {month:'short', year:'2-digit'} : {day:'numeric', month:'short'};
+    ? {month:'short', year:'numeric'} : {day:'numeric', month:'short'};
   const chartData = pw.map(w => ({
     label: new Date(w.week_start+'T00:00:00').toLocaleDateString('en-AU', labelOpts),
     t: new Date(w.week_start+'T00:00:00').getTime(),
