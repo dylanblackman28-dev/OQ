@@ -1,0 +1,31 @@
+name: Partner Order Probe (read-only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      retailer_ids:
+        description: 'Comma-separated Ordermentum retailerIds'
+        required: true
+      order_limit:
+        description: 'How many recent orders per partner'
+        required: false
+        default: '6'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run probe
+        env:
+          OM_API_KEY: ${{ secrets.OM_API_KEY }}
+          RETAILER_IDS: ${{ inputs.retailer_ids }}
+          ORDER_LIMIT: ${{ inputs.order_limit || '6' }}
+        run: python scripts/partner_probe.py
