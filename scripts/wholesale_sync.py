@@ -133,7 +133,8 @@ def retry_db(op, attempts=5):
     delay = 2.0
     for attempt in range(attempts):
         try:
-            return op()
+            # op() builds the query (no I/O); .execute() is the call that can fail
+            return op().execute()
         except Exception as e:
             msg = str(e)
             transient = any(s in msg for s in (
