@@ -10,6 +10,10 @@ on:
         description: 'How many recent orders per partner'
         required: false
         default: '6'
+      days_back:
+        description: 'How many days of supplier orders to scan'
+        required: false
+        default: '400'
 
 jobs:
   probe:
@@ -28,4 +32,5 @@ jobs:
           OM_API_KEY: ${{ secrets.OM_API_KEY }}
           RETAILER_IDS: ${{ inputs.retailer_ids }}
           ORDER_LIMIT: ${{ inputs.order_limit || '6' }}
+          DAYS_BACK: ${{ inputs.days_back || '400' }}
         run: python scripts/partner_probe.py
