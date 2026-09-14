@@ -454,7 +454,6 @@ def refresh_order_summary(sb, partner_id):
                  datetime.fromisoformat(str(first_date)).date())
         years = round(delta.days / 365.25, 2)
 
-    avg_annual = round(total_revenue / years, 2) if years > 0 else total_revenue
     weeks = len(rows.data)
     avg_kg = round(total_kg / weeks, 2) if weeks > 0 else 0
 
@@ -463,7 +462,6 @@ def refresh_order_summary(sb, partner_id):
         "ltv": round(total_revenue, 2),
         "total_orders": total_orders,
         "late_rate": late_rate,
-        "avg_annual_value": avg_annual,
         "avg_kg_per_week": avg_kg,
         "years_as_customer": years,
         "last_updated": datetime.now(timezone.utc).isoformat(),
