@@ -76,6 +76,32 @@ def om_get(url, required=False, attempts=6):
     print(f"  Warning: GET failed for {url}: {last}")
     return {}
 
+
+def retry_db(op, attempts=5):
+    """
+    Run a Supabase/PostgREST call with retry on transient gateway errors.
+
+    PostgREST intermittently returns 502/503/504 (a Gateway Timeout on a trivial
+    select aborted a whole wholesale sync on 14 Sep, leaving that week written
+    for only 3 of 24 partners). Every call here is an idempotent read or upsert,
+    so retrying is safe, and a partial write is far worse than a slow one.
+    """
+    delay = 2.0
+    for attempt in range(attempts):
+        try:
+            return op()
+        except Exception as e:
+            msg = str(e)
+            transient = any(s in msg for s in (
+                "502", "503", "504", "Gateway Timeout", "timeout",
+                "timed out", "Connection", "Server disconnected"))
+            if not transient or attempt == attempts - 1:
+                raise
+            print(f"  Supabase transient error ({msg[:70]}) — "
+                  f"retry {attempt + 1}/{attempts - 1} in {delay:.0f}s")
+            time.sleep(delay)
+            delay = min(delay * 2, 30)
+
 def om_pages(meta, page_size, got):
     """
     Last page number, tolerant of either meta shape.
@@ -295,7 +321,7 @@ def sync_week(sb, weeks_ago):
         print(f"  Rising Sun orders on: {', '.join(rising_sun_dates)}")
 
     print(f"  Writing to Supabase...")
-    sb.table("roast_weekly").upsert({
+    retry_db(lambda: sb.table("roast_weekly").upsert({
         "week_start": str(week_start_date),
         "village_blend_kg": round(totals.get("village_blend_kg", 0), 2),
         "cloud_nine_kg":    round(totals.get("cloud_nine_kg", 0), 2),
@@ -318,23 +344,23 @@ def sync_week(sb, weeks_ago):
         "cb_nitro_20lt_qty": round(cb_qty.get("cb_nitro_20lt_qty", 0), 2),
         "cold_brew_litres":  round(cold_brew_litres, 2),
         "updated_at":       datetime.now(timezone.utc).isoformat(),
-    }, on_conflict="week_start").execute()
+    }, on_conflict="week_start"))
 
     # Per-customer cold brew lines for the tally dashboard: replace the week
-    sb.table("cold_brew_orders").delete().eq(
-        "week_start", str(week_start_date)).execute()
+    retry_db(lambda: sb.table("cold_brew_orders").delete().eq(
+        "week_start", str(week_start_date)))
     if cb_rows:
         for r in cb_rows:
             r["week_start"] = str(week_start_date)
-        sb.table("cold_brew_orders").insert(cb_rows).execute()
+        retry_db(lambda: sb.table("cold_brew_orders").insert(cb_rows))
 
     # Per-customer blend lines for the dashboard order modals: replace the week
-    sb.table("blend_orders").delete().eq(
-        "week_start", str(week_start_date)).execute()
+    retry_db(lambda: sb.table("blend_orders").delete().eq(
+        "week_start", str(week_start_date)))
     if blend_rows:
         for r in blend_rows:
             r["week_start"] = str(week_start_date)
-        sb.table("blend_orders").insert(blend_rows).execute()
+        retry_db(lambda: sb.table("blend_orders").insert(blend_rows))
 
     print(f"  Week {week_start_date} written ✓ "
           f"({len(cb_rows)} cold brew lines, {len(blend_rows)} blend lines)")
@@ -364,11 +390,11 @@ def main():
         sync_week(sb, weeks_ago)
 
     # Write sync timestamp so dashboard can show "last updated by workflow"
-    sb.table("sync_log").upsert({
+    retry_db(lambda: sb.table("sync_log").upsert({
         "id": "roast",
         "last_synced_at": datetime.now(timezone.utc).isoformat(),
         "synced_by": "github_actions",
-    }, on_conflict="id").execute()
+    }, on_conflict="id"))
 
     print("\n[3/3] Done ✓")
     print("=" * 55)

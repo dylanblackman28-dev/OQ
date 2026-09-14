@@ -121,6 +121,32 @@ def om_get(url, required=False, attempts=6):
     return {}
 
 
+def retry_db(op, attempts=5):
+    """
+    Run a Supabase/PostgREST call with retry on transient gateway errors.
+
+    PostgREST intermittently returns 502/503/504 (a Gateway Timeout on a trivial
+    select aborted a whole wholesale sync on 14 Sep, leaving that week written
+    for only 3 of 24 partners). Every call here is an idempotent read or upsert,
+    so retrying is safe, and a partial write is far worse than a slow one.
+    """
+    delay = 2.0
+    for attempt in range(attempts):
+        try:
+            return op()
+        except Exception as e:
+            msg = str(e)
+            transient = any(s in msg for s in (
+                "502", "503", "504", "Gateway Timeout", "timeout",
+                "timed out", "Connection", "Server disconnected"))
+            if not transient or attempt == attempts - 1:
+                raise
+            print(f"  Supabase transient error ({msg[:70]}) — "
+                  f"retry {attempt + 1}/{attempts - 1} in {delay:.0f}s")
+            time.sleep(delay)
+            delay = min(delay * 2, 30)
+
+
 def om_pages(meta, page_size, got):
     """
     Last page number, tolerant of either meta shape.
@@ -346,24 +372,24 @@ def process_orders(all_orders):
 
 # ── Supabase upserts ──────────────────────────────────────────────────────────
 def upsert_partner(sb, retailer_id, name, first_order_date=None):
-    existing = sb.table("partners").select("id, first_order_date").eq(
+    existing = retry_db(lambda: sb.table("partners").select("id, first_order_date").eq(
         "ordermentum_retailer_id", retailer_id
-    ).execute()
+    ))
 
     if existing.data:
         partner_id = existing.data[0]["id"]
         if first_order_date and not existing.data[0].get("first_order_date"):
-            sb.table("partners").update({
+            retry_db(lambda: sb.table("partners").update({
                 "first_order_date": str(first_order_date),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
-            }).eq("id", partner_id).execute()
+            }).eq("id", partner_id))
         return partner_id
     else:
-        result = sb.table("partners").insert({
+        result = retry_db(lambda: sb.table("partners").insert({
             "ordermentum_retailer_id": retailer_id,
             "name": name,
             "first_order_date": str(first_order_date) if first_order_date else None,
-        }).execute()
+        }))
         return result.data[0]["id"]
 
 
@@ -375,31 +401,31 @@ def update_last_blend_order_date(sb, partner_id, blend_date):
     """
     if not blend_date:
         return
-    existing = sb.table("partners").select("last_blend_order_date").eq(
-        "id", partner_id).execute()
+    existing = retry_db(lambda: sb.table("partners").select("last_blend_order_date").eq(
+        "id", partner_id))
     current = existing.data[0].get("last_blend_order_date") if existing.data else None
     if current and str(current) >= str(blend_date):
         return
-    sb.table("partners").update({
+    retry_db(lambda: sb.table("partners").update({
         "last_blend_order_date": str(blend_date),
-    }).eq("id", partner_id).execute()
+    }).eq("id", partner_id))
 
 
 def upsert_weekly_order(sb, partner_id, week_start, kg, order_count,
                         late_count, revenue):
-    sb.table("weekly_orders").upsert({
+    retry_db(lambda: sb.table("weekly_orders").upsert({
         "partner_id": partner_id,
         "week_start": str(week_start),
         "kg_ordered": round(kg, 2),
         "order_count": order_count,
         "late_order_count": late_count,
         "total_revenue": round(revenue, 2),
-    }, on_conflict="partner_id,week_start").execute()
+    }, on_conflict="partner_id,week_start"))
 
 
 def refresh_order_summary(sb, partner_id):
-    rows = sb.table("weekly_orders").select("*").eq(
-        "partner_id", partner_id).execute()
+    rows = retry_db(lambda: sb.table("weekly_orders").select("*").eq(
+        "partner_id", partner_id))
     if not rows.data:
         return
 
@@ -410,10 +436,17 @@ def refresh_order_summary(sb, partner_id):
     late_rate     = round(
         (total_late / total_orders * 100), 2) if total_orders > 0 else 0
 
-    partner = sb.table("partners").select("first_order_date").eq(
-        "id", partner_id).execute()
+    partner = retry_db(lambda: sb.table("partners").select("first_order_date").eq(
+        "id", partner_id))
     first_date = partner.data[0].get(
         "first_order_date") if partner.data else None
+    if not first_date:
+        # Ordermentum's /v1/purchasers/{id} endpoint 404s on api.ordermentum.com,
+        # so partners onboarded since the API migration have no stored first
+        # order date. Fall back to the earliest week we hold orders for — a
+        # floor estimate that self-corrects as history is backfilled deeper.
+        weeks_seen = [r["week_start"] for r in rows.data if r.get("week_start")]
+        first_date = min(weeks_seen) if weeks_seen else None
     years = 0.0
     if first_date:
         delta = (datetime.now(timezone.utc).date() -
@@ -424,7 +457,7 @@ def refresh_order_summary(sb, partner_id):
     weeks = len(rows.data)
     avg_kg = round(total_kg / weeks, 2) if weeks > 0 else 0
 
-    sb.table("order_summary").upsert({
+    retry_db(lambda: sb.table("order_summary").upsert({
         "partner_id": partner_id,
         "ltv": round(total_revenue, 2),
         "total_orders": total_orders,
@@ -433,23 +466,15 @@ def refresh_order_summary(sb, partner_id):
         "avg_kg_per_week": avg_kg,
         "years_as_customer": years,
         "last_updated": datetime.now(timezone.utc).isoformat(),
-    }, on_conflict="partner_id").execute()
+    }, on_conflict="partner_id"))
 
 
 # ── First order date ──────────────────────────────────────────────────────────
-def get_first_order_date(retailer_id):
-    # Optional enrichment — a miss here must not fail the whole sync
-    url = f"https://api.ordermentum.com/v1/purchasers/{retailer_id}"
-    data = om_get(url)
-    if data:
-        activated = data.get("activatedAt") or data.get("firstOrderedAt")
-        if activated:
-            try:
-                return datetime.fromisoformat(
-                    activated.replace("Z", "+00:00")).date()
-            except Exception:
-                pass
-    return None
+# NOTE: /v1/purchasers/{id} existed on app.ordermentum.com but 404s on
+# api.ordermentum.com, so this lookup returned nothing for every partner while
+# burning one request each — pure rate-limit pressure for no data. Partners
+# onboarded before the migration keep their stored first_order_date; newer ones
+# fall back to their earliest known order week in refresh_order_summary().
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -469,10 +494,7 @@ def sync_week(sb, weeks_ago):
     for retailer_id, data in partner_data.items():
         print(f"  → {data['name']}: {data['kg']:.1f}kg, "
               f"{data['order_count']} orders, {data['late_count']} late")
-        first_date = get_first_order_date(retailer_id)
-        time.sleep(0.1)
-        partner_id = upsert_partner(
-            sb, retailer_id, data["name"], first_date)
+        partner_id = upsert_partner(sb, retailer_id, data["name"])
         upsert_weekly_order(
             sb, partner_id, week_start_date,
             data["kg"], data["order_count"], data["late_count"], data["revenue"]
@@ -512,11 +534,11 @@ def main():
         sync_week(sb, weeks_ago)
 
     # Write sync timestamp so dashboard can show "last updated by workflow"
-    sb.table("sync_log").upsert({
+    retry_db(lambda: sb.table("sync_log").upsert({
         "id": "wholesale",
         "last_synced_at": datetime.now(timezone.utc).isoformat(),
         "synced_by": "github_actions",
-    }, on_conflict="id").execute()
+    }, on_conflict="id"))
 
     print(f"\n[3/3] Done ✓")
     print("=" * 60)
