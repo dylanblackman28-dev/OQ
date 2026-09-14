@@ -296,12 +296,20 @@ def pull_orders(start_utc, end_utc):
 
 
 # ── Process line items ────────────────────────────────────────────────────────
-def process_orders(all_orders):
+def process_orders(all_orders, categories=None):
     """
     Only processes orders from TRACKED_PARTNERS.
-    Only counts OQ-COF-WHS SKUs for kg and late flag.
-    Partners with zero WHS coffee kg are excluded entirely.
+
+    Counting rules differ by partner category:
+      * Cafe partners  — OQ-COF-WHS SKUs mark a coffee order; only the tracked
+        blends add kg, so growth is comparable partner to partner.
+      * Other Heroes   — buy retail-format coffee at wholesale prices (e.g.
+        North Coast Community College buys "Retail | Cloud Nine 1KG",
+        OQ-COF-RT-*). The blend rules were never meant for them, and the
+        OQ-COF-WHS gate was silently dropping their orders entirely. Any
+        OQ-COF coffee counts, in any format.
     """
+    categories = categories or {}
     partner_data = defaultdict(lambda: {
         "name": "",
         "retailer_id": "",
@@ -310,6 +318,7 @@ def process_orders(all_orders):
         "late_count": 0,
         "revenue": 0.0,
         "last_blend_date": None,   # date of most recent order containing BLEND kg
+        "items": defaultdict(float),  # product name -> qty, for the items note
     })
 
     for i, order in enumerate(all_orders):
@@ -330,20 +339,31 @@ def process_orders(all_orders):
         # releases, decaf) still marks the order as a coffee order — so
         # order_count / revenue / late tracking are unaffected — but adds no kg.
         # See is_tracked_blend().
+        is_hero = categories.get(retailer_id) == "Other Heroes"
         whs_kg = 0.0
         has_whs_coffee = False
+        order_items = []
         for item in detail.get("lineItems", []):
             sku = item.get("SKU", "") or ""
-            if not is_whs_coffee_sku(sku):
-                continue
-            has_whs_coffee = True
             name = item.get("name", "") or ""
-            if not is_tracked_blend(name, sku):
-                continue
-            qty = item.get("quantity", 0) or 0
-            whs_kg += extract_kg(name, qty)
+            qty = float(item.get("quantity", 0) or 0)
+            if is_hero:
+                # Any OQ coffee counts, retail format included
+                if not sku.upper().startswith("OQ-COF"):
+                    continue
+                has_whs_coffee = True
+                order_items.append((name, qty))
+                whs_kg += extract_kg(name, qty)
+            else:
+                if not is_whs_coffee_sku(sku):
+                    continue
+                has_whs_coffee = True
+                order_items.append((name, qty))
+                if not is_tracked_blend(name, sku):
+                    continue
+                whs_kg += extract_kg(name, qty)
 
-        # Only count this order if it has WHS coffee
+        # Only count this order if it contained coffee
         if not has_whs_coffee:
             continue
 
@@ -353,6 +373,8 @@ def process_orders(all_orders):
         p["kg"] += whs_kg
         p["order_count"] += 1
         p["revenue"] += float(order.get("total", 0) or 0)
+        for nm, q in order_items:
+            p["items"][nm] += q
 
         # Track the most recent order that actually contained BLEND kg.
         # Retail-only / single-origin / decaf-only orders must NOT count here —
@@ -380,6 +402,29 @@ def process_orders(all_orders):
 
 
 # ── Supabase upserts ──────────────────────────────────────────────────────────
+def load_categories(sb):
+    """
+    Category per Ordermentum retailer id. Supabase is the single source of
+    truth (it mirrors HubSpot's Type of Lead), so the sync reads it rather
+    than keeping a second hardcoded list that could drift.
+    """
+    rows = retry_db(lambda: sb.table("partners")
+                    .select("ordermentum_retailer_id, category"))
+    return {r["ordermentum_retailer_id"]: (r.get("category") or "Cafe")
+            for r in (rows.data or []) if r.get("ordermentum_retailer_id")}
+
+
+def summarise_items(items, limit=2):
+    """Short human label for what a partner actually ordered that week."""
+    if not items:
+        return None
+    top = sorted(items.items(), key=lambda kv: -kv[1])[:limit]
+    parts = [f"{q:g} x {n.strip()[:44]}" for n, q in top]
+    if len(items) > limit:
+        parts.append(f"+{len(items) - limit} more")
+    return " · ".join(parts)
+
+
 def upsert_partner(sb, retailer_id, name, first_order_date=None):
     existing = retry_db(lambda: sb.table("partners").select("id, first_order_date").eq(
         "ordermentum_retailer_id", retailer_id
@@ -421,7 +466,7 @@ def update_last_blend_order_date(sb, partner_id, blend_date):
 
 
 def upsert_weekly_order(sb, partner_id, week_start, kg, order_count,
-                        late_count, revenue):
+                        late_count, revenue, items_note=None):
     retry_db(lambda: sb.table("weekly_orders").upsert({
         "partner_id": partner_id,
         "week_start": str(week_start),
@@ -429,6 +474,7 @@ def upsert_weekly_order(sb, partner_id, week_start, kg, order_count,
         "order_count": order_count,
         "late_order_count": late_count,
         "total_revenue": round(revenue, 2),
+        "items_note": items_note,
     }, on_conflict="partner_id,week_start"))
 
 
@@ -495,7 +541,7 @@ def sync_week(sb, weeks_ago):
     print(f"  {len(all_orders)} orders pulled ✓")
 
     print(f"  Processing (tracked partners + OQ-COF-WHS SKUs only)...")
-    partner_data = process_orders(all_orders)
+    partner_data = process_orders(all_orders, load_categories(sb))
     print(f"  {len(partner_data)} partners with WHS coffee orders ✓")
 
     for retailer_id, data in partner_data.items():
@@ -504,7 +550,8 @@ def sync_week(sb, weeks_ago):
         partner_id = upsert_partner(sb, retailer_id, data["name"])
         upsert_weekly_order(
             sb, partner_id, week_start_date,
-            data["kg"], data["order_count"], data["late_count"], data["revenue"]
+            data["kg"], data["order_count"], data["late_count"], data["revenue"],
+            summarise_items(data["items"])
         )
         update_last_blend_order_date(sb, partner_id, data["last_blend_date"])
         refresh_order_summary(sb, partner_id)
