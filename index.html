@@ -379,7 +379,9 @@ function drawLineSVG(svgEl, data, color='#46c4dc', showArea=true) {
     svg += `<circle cx="${x(i)}" cy="${y(d.v)}" r="3" fill="${color}"><title>${d.label||''}: ${d.v.toFixed(1)}kg</title></circle>`;
     const isLabelled = i === data.length-1 || (i % step === 0 && (data.length-1 - i) >= step/2);
     if (isLabelled) {
-      svg += `<text x="${x(i)}" y="${h-pad.b+16}" text-anchor="middle" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${d.label||''}</text>`;
+      // Anchor the end labels inward so long ones (e.g. "Sept 2026") don't clip
+      const anchor = i === 0 ? 'start' : (i === data.length - 1 ? 'end' : 'middle');
+      svg += `<text x="${x(i)}" y="${h-pad.b+16}" text-anchor="${anchor}" font-size="9" fill="#8b8fa8" font-family="DM Mono,monospace">${d.label||''}</text>`;
     }
   });
 
