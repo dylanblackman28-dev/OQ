@@ -525,10 +525,25 @@ function lastBlendOrder(p) {
 }
 
 function partnerStatus(p, week) {
+  // "Did they order this week" keys off order_count, NOT blend kg. Contract /
+  // white-label partners (Rising Sun) order every week but carry no tracked
+  // blend kg, and were showing as "no order" every single week.
   const wo = week.find(w => w.partner_id === p.id);
-  if (!wo || +wo.kg_ordered <= 0) return { status: 'none', kg: 0, wo: null };
-  if (+wo.late_order_count > 0) return { status: 'late', kg: +wo.kg_ordered, wo };
-  return { status: 'ordered', kg: +wo.kg_ordered, wo };
+  if (!wo || +wo.order_count <= 0) return { status: 'none', kg: 0, wo: null };
+  const kg = +wo.kg_ordered || 0;
+  if (+wo.late_order_count > 0) return { status: 'late', kg, wo };
+  return { status: 'ordered', kg, wo };
+}
+
+function lastOrderDate(p) {
+  // The card says "Last order", so it must mean any order — not just a tracked
+  // blend. Derived from weekly_orders; no extra column needed.
+  const wk = allWeeklyOrders
+    .filter(w => w.partner_id === p.id && +w.order_count > 0)
+    .sort((a, b) => b.week_start.localeCompare(a.week_start))[0];
+  if (!wk) return null;
+  return new Date(wk.week_start + 'T00:00:00')
+    .toLocaleDateString('en-AU', {day:'2-digit', month:'2-digit', year:'numeric'});
 }
 
 function renderPartnerCards() {
@@ -561,19 +576,23 @@ function renderPartnerCards() {
       const dim = m.status === 'none';
       let chip = meta.chip;
       if (m.status === 'none') {
-        // Show when they last ordered BLEND coffee instead of a bare "No order".
+        // Show when they last ordered ANYTHING instead of a bare "No order".
         // Other Heroes don't buy the wholesale blend SKUs, so never flag them.
-        const last = lastBlendOrder(m.p);
-        const lapsed = cat.key === 'Cafe' && weeksWithoutBlend(m.p.id) >= LAPSED_WEEKS;
+        const last = lastOrderDate(m.p);
+        const weeksOut = weeksWithoutBlend(m.p.id);
+        const lapsed = cat.key === 'Cafe' && weeksOut >= LAPSED_WEEKS;
         const flag = lapsed
-          ? ` <span title="No blend order in ${weeksWithoutBlend(m.p.id)} weeks" style="color:var(--coral)">⚑</span>`
+          ? ` <span title="No blend order in ${weeksOut} weeks (last blend order ${lastBlendOrder(m.p) || 'none on record'})" style="color:var(--coral)">⚑</span>`
           : '';
         chip = `<span style="font-size:.68rem;font-family:'DM Mono',monospace;color:${lapsed ? 'var(--coral)' : 'var(--muted)'}">${last ? 'Last order: ' + last : 'No order on record'}${flag}</span>`;
       }
+      // Ordered this week but no tracked-blend kg (e.g. contract white-label,
+      // decaf or single origin only) — say so rather than showing a bare dash.
+      const nonBlend = m.status !== 'none' && m.kg <= 0;
       return `<div onclick="openModal('${m.p.id}')" style="background:#fff;border-radius:10px;border:1.5px solid var(--border);border-top:3px solid ${meta.border};padding:1rem;cursor:pointer;transition:border-color .15s;${dim ? 'opacity:.75' : ''}" onmouseover="this.style.borderColor='var(--arctic)'" onmouseout="this.style.borderColor='var(--border)'">
         <div style="font-size:.75rem;font-weight:600;margin-bottom:.4rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.p.name}</div>
         <div style="margin-bottom:.45rem">${chip}</div>
-        <div style="font-size:1.25rem;font-weight:700;color:${m.kg > 0 ? 'var(--indigo)' : 'var(--muted)'}">${m.kg > 0 ? fmtKg(m.kg) : '—'}</div>
+        <div style="font-size:1.25rem;font-weight:700;color:${m.kg > 0 ? 'var(--indigo)' : 'var(--muted)'}" title="${nonBlend ? 'Ordered this week, but none of it is a tracked blend (Village / Cloud Nine / Euphoria)' : 'Blend kg this week'}">${m.kg > 0 ? fmtKg(m.kg) : (nonBlend ? '<span style="font-size:.72rem;font-weight:600">non-blend order</span>' : '—')}</div>
         <div style="font-size:.65rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:.25rem">LTV ${s.ltv ? fmt(s.ltv) : '—'}</div>
       </div>`;
     }).join('');
