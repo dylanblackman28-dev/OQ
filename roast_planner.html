@@ -333,7 +333,7 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
       <span class="section-title">This week</span>
       <div class="section-line"></div>
     </div>
-    <p class="section-note">For this week only: the last 8 closed weeks, and the same week last year. Both are kilos ordered, not a par to copy in. Venue milk is not included.</p>
+    <p class="section-note">For this week: the last 8 closed weeks of orders. Where this week is school holidays, last year is the same point in that break, not the same calendar date. Both are kilos ordered, not a par. Venue milk is not included.</p>
     <div class="blend-suggest" id="blend-suggest"></div>
     <div class="section-hd">
       <span class="section-title">Month index, 2023–2025</span>
@@ -429,14 +429,14 @@ const HOLIDAYS = [
 // Labeled public-school breaks for the note on a week. Dates move every year;
 // each entry is that year's published NSW and QLD calendar, not a standing rule.
 const BREAK_NOTES = [
-  { start:'2025-04-05', end:'2025-04-24', text:'QLD autumn holidays 5–21 Apr 2025, NSW 14–24 Apr 2025' },
-  { start:'2025-06-28', end:'2025-07-18', text:'QLD winter holidays 28 Jun–13 Jul 2025, NSW 7–18 Jul 2025' },
-  { start:'2025-09-20', end:'2025-10-10', text:'QLD spring holidays 20 Sep–6 Oct 2025, NSW 29 Sep–10 Oct 2025' },
-  { start:'2025-12-13', end:'2026-02-02', text:'QLD summer holidays from 13 Dec 2025, NSW from 22 Dec 2025' },
-  { start:'2026-04-03', end:'2026-04-19', text:'QLD autumn holidays 3–19 Apr 2026, NSW 7–17 Apr 2026' },
-  { start:'2026-06-27', end:'2026-07-17', text:'QLD winter holidays 27 Jun–12 Jul 2026, NSW 6–17 Jul 2026' },
-  { start:'2026-09-19', end:'2026-10-09', text:'QLD spring holidays 19 Sep–5 Oct 2026, NSW 28 Sep–9 Oct 2026' },
-  { start:'2026-12-12', end:'2027-02-03', text:'QLD summer holidays from 12 Dec 2026, NSW from 18 Dec 2026' },
+  { season:'autumn', year:2025, start:'2025-04-05', end:'2025-04-24', text:'QLD autumn holidays 5–21 Apr 2025, NSW 14–24 Apr 2025' },
+  { season:'winter', year:2025, start:'2025-06-28', end:'2025-07-18', text:'QLD winter holidays 28 Jun–13 Jul 2025, NSW 7–18 Jul 2025' },
+  { season:'spring', year:2025, start:'2025-09-20', end:'2025-10-10', text:'QLD spring holidays 20 Sep–6 Oct 2025, NSW 29 Sep–10 Oct 2025' },
+  { season:'summer', year:2025, start:'2025-12-13', end:'2026-02-02', text:'QLD summer holidays from 13 Dec 2025, NSW from 22 Dec 2025' },
+  { season:'autumn', year:2026, start:'2026-04-03', end:'2026-04-19', text:'QLD autumn holidays 3–19 Apr 2026, NSW 7–17 Apr 2026' },
+  { season:'winter', year:2026, start:'2026-06-27', end:'2026-07-17', text:'QLD winter holidays 27 Jun–12 Jul 2026, NSW 6–17 Jul 2026' },
+  { season:'spring', year:2026, start:'2026-09-19', end:'2026-10-09', text:'QLD spring holidays 19 Sep–5 Oct 2026, NSW 28 Sep–9 Oct 2026' },
+  { season:'summer', year:2026, start:'2026-12-12', end:'2027-02-03', text:'QLD summer holidays from 12 Dec 2026, NSW from 18 Dec 2026' },
 ];
 
 const SETUP_SQL =
@@ -689,9 +689,31 @@ function avgField(list, field) {
 function parContext(field, week) {
   const recent = weeksBefore(week, 8);
   const recentAvg = recent.length >= 4 ? avgField(recent, field) : null;
-  const ly = weeklyByWeek[addDays(week, -364)];
-  const lastYear = ly ? (+ly[field] || 0) : null;
-  return { recentAvg, lastYear };
+  const cmp = comparisonWeek(week);
+  const lastYear = cmp && weeklyByWeek[cmp.week] ? (+weeklyByWeek[cmp.week][field] || 0) : null;
+  return { recentAvg, lastYear, cmp };
+}
+
+function comparisonWeek(week) {
+  const hit = BREAK_NOTES.find(b => weekOverlaps(week, b.start, b.end));
+  const calendar = addDays(week, -364);
+  if (!hit) {
+    return weeklyByWeek[calendar] ? { week: calendar, label: 'Same dates last year', sub: weekLabel(calendar) } : null;
+  }
+  const prior = BREAK_NOTES.find(b => b.season === hit.season && b.year === hit.year - 1);
+  if (!prior) return weeklyByWeek[calendar] ? { week: calendar, label: 'Same dates last year', sub: weekLabel(calendar) } : null;
+  const nowList = weeks.filter(w => weekOverlaps(w, hit.start, hit.end)).sort();
+  const thenList = weeks.filter(w => weekOverlaps(w, prior.start, prior.end)).sort();
+  const idx = nowList.indexOf(week);
+  if (idx < 0 || !thenList.length) return null;
+  const matched = thenList[Math.min(idx, thenList.length - 1)];
+  const season = hit.season.charAt(0).toUpperCase() + hit.season.slice(1);
+  return {
+    week: matched,
+    label: season + ' ' + prior.year,
+    sub: 'week of ' + new Date(matched + 'T00:00:00').toLocaleDateString('en-AU', { day:'numeric', month:'short' }),
+    priorText: prior.text,
+  };
 }
 
 function weekOverlaps(week, start, end) {
@@ -724,10 +746,12 @@ function renderWeekSelector() {
   document.getElementById('wip-badge').style.display = live ? 'inline-flex' : 'none';
   document.getElementById('open-banner').style.display = live ? '' : 'none';
   const notes = holidayNote(currentWeek);
+  const cmp = comparisonWeek(currentWeek);
   const holEl = document.getElementById('holiday-banner');
   if (notes.length) {
     holEl.style.display = '';
-    holEl.textContent = 'This week overlaps ' + notes.map(n => n.text).join('; ') + '. Public school dates change every year. Holiday weeks in the order history have run close to term weeks.';
+    holEl.textContent = 'This week overlaps ' + notes.map(n => n.text).join('; ') + '. Public school dates change every year.' +
+      (cmp && cmp.priorText ? ' Last year is the same point in that break, not the same calendar date: ' + cmp.priorText + '.' : '');
   } else {
     holEl.style.display = 'none';
     holEl.textContent = '';
@@ -801,9 +825,9 @@ function renderPlanner() {
   }).join('');
 
   BLENDS.forEach(b => {
-    const ly = weeklyByWeek[addDays(currentWeek, -364)];
+    const ctx = parContext(b.field, currentWeek);
     const hint = document.getElementById('ly-hint-' + b.key);
-    if (ly) hint.textContent = 'Last year ' + fmtKg(ly[b.field] || 0);
+    if (ctx.cmp && ctx.lastYear != null) hint.textContent = ctx.cmp.label + ' · ' + Math.round(ctx.lastYear) + 'kg';
     updatePrevHint(b.key);
   });
 }
@@ -1142,7 +1166,7 @@ function renderSeason() {
       </div>
       <div class="par-refs">
         ${cell('Lately', ctx.recentAvg, 'last 8 weeks')}
-        ${cell('Same week last year', ctx.lastYear, 'kilos ordered')}
+        ${cell(ctx.cmp ? ctx.cmp.label : 'Last year', ctx.lastYear, ctx.cmp ? ctx.cmp.sub : 'not a holiday week')}
       </div>
     </div>`;
   }).join('');
