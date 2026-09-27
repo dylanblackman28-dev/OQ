@@ -97,9 +97,8 @@ main{max-width:1240px;margin:0 auto;padding:1.5rem 2rem 2rem;display:none}
 .kg-input.short{color:var(--coral);font-weight:700}
 .field-hint{font-size:.62rem;color:var(--muted);line-height:1.35;min-height:1em;font-family:'DM Mono',monospace}
 .field-hint.warn{color:#a85a10}
-.suggest-btn{font-family:inherit;font-size:.62rem;font-weight:600;color:var(--indigo);background:rgba(70,196,220,.15);border:1px solid rgba(70,196,220,.45);border-radius:5px;padding:.18rem .4rem;cursor:pointer;text-align:left}
-.suggest-btn:hover:not(:disabled){background:var(--arctic);border-color:var(--arctic)}
-.suggest-btn:disabled{cursor:default;opacity:.75;background:rgba(97,187,75,.12);border-color:rgba(97,187,75,.35);color:#3a7a28}
+.par-refs{display:grid;grid-template-columns:repeat(3,minmax(88px,1fr));gap:.35rem .75rem}
+.ref-val{font-family:'DM Mono',monospace;font-weight:700;font-size:1.05rem;line-height:1.2}
 .to-roast-value{font-family:'DM Mono',monospace;font-size:1.35rem;font-weight:700;line-height:1;min-height:2.1rem;display:flex;align-items:center}
 .to-roast-value.positive{color:var(--indigo)}
 .to-roast-value.surplus{color:var(--apple)}
@@ -151,7 +150,7 @@ main{max-width:1240px;margin:0 auto;padding:1.5rem 2rem 2rem;display:none}
 .legend-swatch{width:14px;height:8px;border-radius:2px}
 
 .blend-suggest{display:flex;flex-direction:column;gap:.6rem;margin-bottom:1.25rem}
-.sug-row{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:.9rem 1.1rem;display:grid;grid-template-columns:160px 1fr auto;gap:.8rem 1rem;align-items:center;position:relative;overflow:hidden}
+.sug-row{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:.9rem 1.1rem;display:grid;grid-template-columns:150px 1fr;gap:.8rem 1.25rem;align-items:center;position:relative;overflow:hidden}
 .sug-row .blend-bar{width:4px}
 .sug-copy{font-size:.8rem;color:var(--indigo-light);line-height:1.45}
 .sug-copy strong{color:var(--indigo);font-weight:600}
@@ -274,6 +273,7 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
     <div class="open-banner" id="stock-once" style="display:none">
       No par was saved for last week, so type stock on hand this once. After you save, next week calculates it from that par.
     </div>
+    <div class="open-banner" id="holiday-banner" style="display:none"></div>
 
     <div class="section-hd" style="margin-top:.25rem">
       <span class="section-title">Venue milk espresso — kilos ordered</span>
@@ -333,7 +333,7 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
       <span class="section-title">Par guide for this week</span>
       <div class="section-line"></div>
     </div>
-    <p class="section-note">Suggested par is about one week of wholesale cover: the last 8 weeks, bent by how the same four weeks moved last year. November cover is that same recent pace scaled to last November. Venue milk stays out of both numbers, because the blend changes each week and is typed on the row.</p>
+    <p class="section-note">These figures are kilos ordered, so you can set par against them. Lately is the last 8 closed weeks. November is last November, scaled to this year's pace. Par can sit above a normal week when you want stock in front of that peak. Venue milk is not included.</p>
     <div class="blend-suggest" id="blend-suggest"></div>
     <div class="section-hd">
       <span class="section-title">Month index, 2023–2025</span>
@@ -424,6 +424,19 @@ const HOLIDAYS = [
   ['2026-06-27','2026-07-17','winter'],
   ['2026-09-19','2026-10-09','spring'],
   ['2026-12-12','2027-02-03','summer'],
+];
+
+// Labeled public-school breaks for the note on a week. Dates move every year;
+// each entry is that year's published NSW and QLD calendar, not a standing rule.
+const BREAK_NOTES = [
+  { start:'2025-04-05', end:'2025-04-24', text:'QLD autumn holidays 5–21 Apr 2025, NSW 14–24 Apr 2025' },
+  { start:'2025-06-28', end:'2025-07-18', text:'QLD winter holidays 28 Jun–13 Jul 2025, NSW 7–18 Jul 2025' },
+  { start:'2025-09-20', end:'2025-10-10', text:'QLD spring holidays 20 Sep–6 Oct 2025, NSW 29 Sep–10 Oct 2025' },
+  { start:'2025-12-13', end:'2026-02-02', text:'QLD summer holidays from 13 Dec 2025, NSW from 22 Dec 2025' },
+  { start:'2026-04-03', end:'2026-04-19', text:'QLD autumn holidays 3–19 Apr 2026, NSW 7–17 Apr 2026' },
+  { start:'2026-06-27', end:'2026-07-17', text:'QLD winter holidays 27 Jun–12 Jul 2026, NSW 6–17 Jul 2026' },
+  { start:'2026-09-19', end:'2026-10-09', text:'QLD spring holidays 19 Sep–5 Oct 2026, NSW 28 Sep–9 Oct 2026' },
+  { start:'2026-12-12', end:'2027-02-03', text:'QLD summer holidays from 12 Dec 2026, NSW from 18 Dec 2026' },
 ];
 
 const SETUP_SQL =
@@ -673,17 +686,28 @@ function avgField(list, field) {
   return xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
-function suggestedPar(field, week) {
+function parContext(field, week) {
   const recent = weeksBefore(week, 8);
-  const lyRecent = recent.map(w => addDays(w, -364)).filter(w => weeklyByWeek[w]);
-  const lyFwd = [0, 1, 2, 3].map(i => addDays(addDays(week, -364), 7 * i)).filter(w => weeklyByWeek[w]);
-  if (recent.length < 4 || lyRecent.length < 4 || lyFwd.length < 2) return null;
-  const base = avgField(recent, field);
-  const denom = avgField(lyRecent, field);
-  const numer = avgField(lyFwd, field);
-  if (base == null || numer == null) return null;
-  const factor = denom > 0 ? numer / denom : 1;
-  return { kg: round5(base * factor), base, factor };
+  const recentAvg = recent.length >= 4 ? avgField(recent, field) : null;
+  const ly = weeklyByWeek[addDays(week, -364)];
+  const lastYear = ly ? (+ly[field] || 0) : null;
+  const nov = novemberCover(field, week);
+  return {
+    recentAvg,
+    lastYear,
+    november: nov ? nov.kg : null,
+    novYear: nov ? nov.year : null,
+  };
+}
+
+function weekOverlaps(week, start, end) {
+  const from = week;
+  const to = addDays(week, 6);
+  return from <= end && to >= start;
+}
+
+function holidayNote(week) {
+  return BREAK_NOTES.filter(b => weekOverlaps(week, b.start, b.end));
 }
 
 function novemberCover(field, week) {
@@ -723,6 +747,15 @@ function renderWeekSelector() {
   const live = isWeekInProgress(currentWeek);
   document.getElementById('wip-badge').style.display = live ? 'inline-flex' : 'none';
   document.getElementById('open-banner').style.display = live ? '' : 'none';
+  const notes = holidayNote(currentWeek);
+  const holEl = document.getElementById('holiday-banner');
+  if (notes.length) {
+    holEl.style.display = '';
+    holEl.textContent = 'This week overlaps ' + notes.map(n => n.text).join('; ') + '. Public school dates change every year. In the order history, holiday weeks have run close to term weeks. November is the heavier stretch.';
+  } else {
+    holEl.style.display = 'none';
+    holEl.textContent = '';
+  }
 }
 
 function renderPlanner() {
@@ -739,7 +772,10 @@ function renderPlanner() {
     const prevShown = savedPrev != null && savedPrev !== '' ? savedPrev : (plannedRoast > 0 ? plannedRoast : '');
     const venue = extras.venue[code];
     const manualStock = pPar == null && plan ? plan[code + '_stock_kg'] : '';
-    const sug = suggestedPar(b.field, currentWeek);
+    const ctx = parContext(b.field, currentWeek);
+    const parBits = [];
+    if (ctx.recentAvg) parBits.push('Lately ' + Math.round(ctx.recentAvg) + 'kg/wk');
+    if (ctx.november) parBits.push('Nov ~' + Math.round(ctx.november) + 'kg');
     return `
     <div class="blend-row">
       <div class="blend-bar" style="background:${b.color}"></div>
@@ -765,7 +801,7 @@ function renderPlanner() {
         <input class="kg-input" type="number" min="0" step="0.5" id="par-${b.key}"
           value="${par > 0 ? inputVal(par) : ''}" placeholder="0"
           oninput="onEdit('${b.key}')">
-        <button class="suggest-btn" id="suggest-${b.key}" style="display:none" type="button"></button>
+        <div class="field-hint" id="par-hint-${b.key}">${parBits.join(' · ')}</div>
       </div>
       <div class="input-group">
         <div class="input-label">Stock on hand</div>
@@ -794,39 +830,7 @@ function renderPlanner() {
     const hint = document.getElementById('ly-hint-' + b.key);
     if (ly) hint.textContent = 'Last year ' + fmtKg(ly[b.field] || 0);
     updatePrevHint(b.key);
-    if (sugForButton(b)) updateSuggest(b);
   });
-}
-
-function sugForButton(b) {
-  return suggestedPar(b.field, currentWeek);
-}
-
-function updateSuggest(bOrKey) {
-  const b = typeof bOrKey === 'string' ? BLENDS.find(x => x.key === bOrKey) : bOrKey;
-  const btn = document.getElementById('suggest-' + b.key);
-  if (!btn) return;
-  const sug = suggestedPar(b.field, currentWeek);
-  if (!sug) { btn.style.display = 'none'; return; }
-  const parRaw = document.getElementById('par-' + b.key).value;
-  const par = parRaw === '' ? null : num(parRaw);
-  btn.style.display = '';
-  btn.onclick = () => applySuggestion(b.key, sug.kg);
-  if (par != null && Math.abs(par - sug.kg) <= 2.5) {
-    btn.textContent = 'On seasonal par';
-    btn.disabled = true;
-  } else {
-    btn.disabled = false;
-    btn.textContent = 'Use ' + sug.kg + 'kg';
-  }
-}
-
-function applySuggestion(key, kg) {
-  const el = document.getElementById('par-' + key);
-  if (!el) return;
-  el.value = kg;
-  recalc(key);
-  markDirty();
 }
 
 function onEdit(key) {
@@ -921,7 +925,6 @@ function recalc(key) {
       if (rh) rh.textContent = '';
     }
   }
-  updateSuggest(b);
   updateTotals();
 }
 
@@ -1150,28 +1153,24 @@ function renderSeason() {
     <div class="season-card quiet">
       <div class="sc-label">School holidays</div>
       <div class="sc-value">${holStat(hol.lift)}</div>
-      <div class="sc-body">${hol.nHol ? Math.round(hol.holAvg) + 'kg a holiday week, ' + Math.round(hol.termAvg) + 'kg in term. The quarter is the par signal.' : ''}</div>
+      <div class="sc-body">${hol.nHol ? Math.round(hol.holAvg) + 'kg a holiday week, ' + Math.round(hol.termAvg) + 'kg in term. Dates move every year. Shading uses the published NSW and QLD calendar for each year.' : ''}</div>
     </div>`;
 
   document.getElementById('blend-suggest').innerHTML = BLENDS.map(b => {
-    const sug = suggestedPar(b.field, currentWeek);
-    const nov = novemberCover(b.field, currentWeek);
+    const ctx = parContext(b.field, currentWeek);
     const parRaw = document.getElementById('par-' + b.key)?.value;
-    const par = parRaw ? num(parRaw) : null;
-    const ly = weeklyByWeek[addDays(currentWeek, -364)];
-    const copy = !sug ? 'Not enough history either side of this week to suggest a par.'
-      : `Last 8 weeks averaged <strong>${fmtKg(sug.base)}</strong>. The same week last year and the three after it ran at <strong>${sug.factor.toFixed(2)}×</strong> that pace, so the cover for now is <strong>${sug.kg}kg</strong>.` +
-        (nov ? ` Last November (${nov.year}), on this year's pace, is <strong>${nov.kg}kg</strong>.` : '') +
-        (ly ? ` Same week last year was ${fmtKg(ly[b.field] || 0)} ordered.` : '');
-    const yours = par ? `<div class="field-hint">Your par ${fmtKg(par)}</div>` : `<div class="field-hint">No par entered</div>`;
-    const btn = sug
-      ? `<button class="suggest-btn" type="button" onclick="applySuggestion('${b.key}', ${sug.kg})">Use ${sug.kg}kg on this week</button>`
-      : '';
+    const cell = (label, value, sub) => `<div><div class="sc-label">${label}</div><div class="ref-val">${value == null ? '—' : Math.round(value) + 'kg'}</div><div class="field-hint">${sub}</div></div>`;
     return `<div class="sug-row">
       <div class="blend-bar" style="background:${b.color}"></div>
-      <div><div class="blend-name">${b.label}</div><div class="blend-code">${b.code}</div></div>
-      <div class="sug-copy">${copy}</div>
-      <div class="sug-actions">${btn}${yours}</div>
+      <div>
+        <div class="blend-name">${b.label}</div>
+        <div class="blend-code">${parRaw ? 'Par entered ' + fmtKg(num(parRaw)) : 'No par entered'}</div>
+      </div>
+      <div class="par-refs">
+        ${cell('Lately', ctx.recentAvg, 'last 8 weeks')}
+        ${cell('Last year', ctx.lastYear, 'same week')}
+        ${cell('November', ctx.november, ctx.novYear ? ctx.novYear + ', this year\'s pace' : 'this year\'s pace')}
+      </div>
     </div>`;
   }).join('');
 
