@@ -97,7 +97,7 @@ main{max-width:1240px;margin:0 auto;padding:1.5rem 2rem 2rem;display:none}
 .kg-input.short{color:var(--coral);font-weight:700}
 .field-hint{font-size:.62rem;color:var(--muted);line-height:1.35;min-height:1em;font-family:'DM Mono',monospace}
 .field-hint.warn{color:#a85a10}
-.par-refs{display:grid;grid-template-columns:repeat(3,minmax(88px,1fr));gap:.35rem .75rem}
+.par-refs{display:grid;grid-template-columns:repeat(2,minmax(88px,1fr));gap:.35rem .75rem}
 .ref-val{font-family:'DM Mono',monospace;font-weight:700;font-size:1.05rem;line-height:1.2}
 .to-roast-value{font-family:'DM Mono',monospace;font-size:1.35rem;font-weight:700;line-height:1;min-height:2.1rem;display:flex;align-items:center}
 .to-roast-value.positive{color:var(--indigo)}
@@ -330,16 +330,16 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
       </div>
     </div>
     <div class="section-hd" style="margin-top:0">
-      <span class="section-title">Par guide for this week</span>
+      <span class="section-title">This week</span>
       <div class="section-line"></div>
     </div>
-    <p class="section-note">These figures are kilos ordered, so you can set par against them. Lately is the last 8 closed weeks. November is last November, scaled to this year's pace. Par can sit above a normal week when you want stock in front of that peak. Venue milk is not included.</p>
+    <p class="section-note">For this week only: the last 8 closed weeks, and the same week last year. Both are kilos ordered, not a par to copy in. Venue milk is not included.</p>
     <div class="blend-suggest" id="blend-suggest"></div>
     <div class="section-hd">
       <span class="section-title">Month index, 2023–2025</span>
       <div class="section-line"></div>
     </div>
-    <p class="section-note">1.00 is that coffee's own average week. Above 1.10 is a heavier month. October to December, and November in particular, is the stretch to raise par for.</p>
+    <p class="section-note">The shape of the year, from 2023–2025. 1.00 is that coffee's own average week. This is not this week's par.</p>
     <div class="month-wrap"><table class="month-table" id="month-table"></table></div>
   </div>
 
@@ -691,13 +691,7 @@ function parContext(field, week) {
   const recentAvg = recent.length >= 4 ? avgField(recent, field) : null;
   const ly = weeklyByWeek[addDays(week, -364)];
   const lastYear = ly ? (+ly[field] || 0) : null;
-  const nov = novemberCover(field, week);
-  return {
-    recentAvg,
-    lastYear,
-    november: nov ? nov.kg : null,
-    novYear: nov ? nov.year : null,
-  };
+  return { recentAvg, lastYear };
 }
 
 function weekOverlaps(week, start, end) {
@@ -710,31 +704,13 @@ function holidayNote(week) {
   return BREAK_NOTES.filter(b => weekOverlaps(week, b.start, b.end));
 }
 
-function novemberCover(field, week) {
-  const month = week.slice(5, 7);
-  let novYear = Number(week.slice(0, 4));
-  if (month <= '11') novYear -= 1;
-  let novWeeks = weeks.filter(w => w.startsWith(novYear + '-11') && w < week);
-  if (novWeeks.length < 3) {
-    novWeeks = weeks.filter(w => w.startsWith((novYear - 1) + '-11') && w < week);
-    novYear -= 1;
-  }
-  const recent = weeksBefore(week, 8);
-  const lyRecent = recent.map(w => addDays(w, -364)).filter(w => weeklyByWeek[w]);
-  const base = avgField(recent, field);
-  const denom = avgField(lyRecent, field);
-  const novAvg = avgField(novWeeks, field);
-  if (base == null || !(denom > 0) || novAvg == null || novWeeks.length < 3) return null;
-  return { kg: round5(base * (novAvg / denom)), year: novYear, novAvg };
-}
-
 function setView(name) {
   view = name;
   document.getElementById('view-planner').style.display = name === 'planner' ? '' : 'none';
   document.getElementById('view-season').style.display = name === 'season' ? '' : 'none';
   document.getElementById('tab-planner').classList.toggle('active', name === 'planner');
   document.getElementById('tab-season').classList.toggle('active', name === 'season');
-  document.getElementById('hero-eyebrow').textContent = name === 'season' ? 'Seasonal par guide' : 'Roast session';
+  document.getElementById('hero-eyebrow').textContent = name === 'season' ? 'The year' : 'Roast session';
   if (name === 'season') renderSeason();
 }
 
@@ -751,7 +727,7 @@ function renderWeekSelector() {
   const holEl = document.getElementById('holiday-banner');
   if (notes.length) {
     holEl.style.display = '';
-    holEl.textContent = 'This week overlaps ' + notes.map(n => n.text).join('; ') + '. Public school dates change every year. In the order history, holiday weeks have run close to term weeks. November is the heavier stretch.';
+    holEl.textContent = 'This week overlaps ' + notes.map(n => n.text).join('; ') + '. Public school dates change every year. Holiday weeks in the order history have run close to term weeks.';
   } else {
     holEl.style.display = 'none';
     holEl.textContent = '';
@@ -775,7 +751,6 @@ function renderPlanner() {
     const ctx = parContext(b.field, currentWeek);
     const parBits = [];
     if (ctx.recentAvg) parBits.push('Lately ' + Math.round(ctx.recentAvg) + 'kg/wk');
-    if (ctx.november) parBits.push('Nov ~' + Math.round(ctx.november) + 'kg');
     return `
     <div class="blend-row">
       <div class="blend-bar" style="background:${b.color}"></div>
@@ -1128,14 +1103,13 @@ function indexClass(ix) {
 function renderSeason() {
   const report = seasonReport();
   const q4txt = report.q4.map(q => q.year + ' ' + (q.lift >= 0 ? '+' : '') + Math.round(q.lift * 100) + '%').join(', ');
-  const novLast = report.november[report.november.length - 1];
   const novAvg = report.november.length
     ? report.november.reduce((s, n) => s + n.index, 0) / report.november.length
     : 0;
   const hol = report.holiday;
   document.getElementById('season-lead').innerHTML =
-    `October to December is the heavy quarter${q4txt ? ' (' + q4txt + ' versus the rest of that year)' : ''}. ` +
-    `November averages <strong>${novAvg ? novAvg.toFixed(2) : '—'}×</strong> a normal week. ` +
+    `Across the year, October to December is the heavy quarter${q4txt ? ' (' + q4txt + ' versus the rest of that year)' : ''}, and November averages <strong>${novAvg ? novAvg.toFixed(2) : '—'}×</strong> a normal week. ` +
+    `That is the shape of the year, not this week's par. ` +
     `School-holiday weeks, NSW and QLD together, were <strong>${holPhrase(hol.lift)}</strong>` +
     (hol.nHol ? ` (${hol.nHol} holiday weeks, ${hol.nTerm} term weeks, from late 2024).` : '.');
 
@@ -1168,8 +1142,7 @@ function renderSeason() {
       </div>
       <div class="par-refs">
         ${cell('Lately', ctx.recentAvg, 'last 8 weeks')}
-        ${cell('Last year', ctx.lastYear, 'same week')}
-        ${cell('November', ctx.november, ctx.novYear ? ctx.novYear + ', this year\'s pace' : 'this year\'s pace')}
+        ${cell('Same week last year', ctx.lastYear, 'kilos ordered')}
       </div>
     </div>`;
   }).join('');
