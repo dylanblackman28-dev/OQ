@@ -267,6 +267,7 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
       <span class="f-result">Kg to roast</span> = this week's par − stock on hand + venue milk assigned to this coffee.
       When par stays the same, kg to roast equals kilos ordered plus that venue milk.
     </div>
+    <p class="section-note">Blends are roasted in 25kg batches. Production usually wants an even number of batches, so Village Blend, Cloud Nine, Euphoria and Decaf are planned in 50kg steps. Vietnam K'Ho steps by 25kg.</p>
     <div class="open-banner" id="open-banner" style="display:none">
       This ordering week is still open, so kilos ordered will keep moving until Tuesday 11:59am. Hit Update now before the roast is locked in.
     </div>
@@ -290,7 +291,7 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
       <span title="Target stock after this roast.">Par level</span>
       <span title="Last week's par minus this week's kilos ordered.">Stock on hand</span>
       <span title="Venue milk espresso kilos to roast as this coffee.">Venue milk</span>
-      <span>To roast</span>
+      <span title="Par minus stock, plus venue milk. Blends are planned in 50kg steps. Vietnam K'Ho steps by 25kg.">To roast</span>
     </div>
     <div class="planner-grid" id="planner-grid"></div>
 
@@ -396,11 +397,11 @@ const ANON_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // Manual extras live in roast_plan.venue_blend as JSON. The table has no spare columns.
 
 const BLENDS = [
-  { key:'village_blend', field:'village_blend_kg', code:'VB',  label:'Village Blend', color:'#46c4dc' },
-  { key:'cloud_nine',    field:'cloud_nine_kg',    code:'C9',  label:'Cloud Nine',    color:'#61bb4b' },
-  { key:'euphoria',      field:'euphoria_kg',      code:'EU',  label:'Euphoria',      color:'#f4932b' },
-  { key:'decaf',         field:'decaf_kg',         code:'DC',  label:'Decaf',         color:'#e0c23a' },
-  { key:'vietnam_kho',   field:'vietnam_kho_kg',   code:'KHO', label:"Vietnam K'Ho",  color:'#824e9f' },
+  { key:'village_blend', field:'village_blend_kg', code:'VB',  label:'Village Blend', color:'#46c4dc', batch:50 },
+  { key:'cloud_nine',    field:'cloud_nine_kg',    code:'C9',  label:'Cloud Nine',    color:'#61bb4b', batch:50 },
+  { key:'euphoria',      field:'euphoria_kg',      code:'EU',  label:'Euphoria',      color:'#f4932b', batch:50 },
+  { key:'decaf',         field:'decaf_kg',         code:'DC',  label:'Decaf',         color:'#e0c23a', batch:50 },
+  { key:'vietnam_kho',   field:'vietnam_kho_kg',   code:'KHO', label:"Vietnam K'Ho",  color:'#824e9f', batch:25 },
 ];
 
 const VENUES = [
@@ -921,7 +922,13 @@ function recalc(key) {
     } else {
       out.textContent = fmtKg(roast);
       out.className = 'to-roast-value positive';
-      if (rh) rh.textContent = '';
+      if (rh) {
+        const step = b.batch || 25;
+        const nearest = Math.round(roast / step) * step;
+        if (Math.abs(roast - nearest) < 0.5) rh.textContent = step + 'kg batch';
+        else if (nearest <= 0) rh.textContent = 'Under a ' + step + 'kg batch';
+        else rh.textContent = 'Nearest ' + step + 'kg batch ' + nearest + 'kg';
+      }
     }
   }
   updateTotals();
