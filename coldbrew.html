@@ -19,6 +19,7 @@ header{background:var(--indigo);padding:.55rem 2rem;display:flex;align-items:cen
 .dash-nav{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
 .dash-nav a{background:transparent;border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:6px;padding:.32rem .7rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;text-decoration:none;white-space:nowrap;transition:all .15s}
 .dash-nav a:hover{border-color:var(--arctic);color:var(--arctic)}
+.dash-split{width:1px;height:16px;background:rgba(255,255,255,.28);margin:0 .2rem}
 .header-right{display:flex;align-items:center;gap:1.5rem;margin-left:auto}
 #last-updated{font-size:.72rem;color:var(--arctic);font-family:'DM Mono',monospace;opacity:.8}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--apple);box-shadow:0 0 6px var(--apple)}
@@ -128,6 +129,9 @@ footer{text-align:center;padding:2rem;font-size:.67rem;color:var(--muted);letter
     <a id="link-wholesale" href="index.html">Wholesale analytics</a>
     <a id="link-kilos" href="roast.html">Kilos ordered</a>
     <a id="link-roast" href="roast_planner.html">Roast plan</a>
+    <span class="dash-split" aria-hidden="true"></span>
+    <a href="https://app.ordermentum.com" target="_blank" rel="noopener">Ordermentum</a>
+    <a href="https://app.hubspot.com" target="_blank" rel="noopener">HubSpot</a>
   </nav>
   <div class="header-right">
     <button id="refresh-btn" onclick="manualRefresh()" title="Pull the latest orders from Ordermentum right now (~2 min)">⟳ Update now</button>
