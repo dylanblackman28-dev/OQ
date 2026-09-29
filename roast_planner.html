@@ -16,10 +16,13 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Clash Grotesk',system-ui,sans-serif;background:var(--surface);color:var(--indigo);min-height:100vh}
 
-header{background:var(--indigo);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic)}
+header{background:var(--indigo);padding:.55rem 2rem;display:flex;align-items:center;justify-content:space-between;min-height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic);gap:.75rem 1.25rem;flex-wrap:wrap}
 .logo{font-size:.7rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:#fff}
 .logo span{color:var(--arctic)}
-.header-right{display:flex;align-items:center;gap:1.5rem}
+.dash-nav{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.dash-nav a{background:transparent;border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:6px;padding:.32rem .7rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;text-decoration:none;white-space:nowrap;transition:all .15s}
+.dash-nav a:hover{border-color:var(--arctic);color:var(--arctic)}
+.header-right{display:flex;align-items:center;gap:1.5rem;margin-left:auto}
 #last-updated{font-size:.72rem;color:var(--arctic);font-family:'DM Mono',monospace;opacity:.8}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--apple);box-shadow:0 0 6px var(--apple)}
 #refresh-btn{background:transparent;border:1px solid var(--arctic);color:var(--arctic);border-radius:6px;padding:.32rem .75rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -36,7 +39,7 @@ main{max-width:1240px;margin:0 auto;padding:1.5rem 2rem 2rem;display:none}
 .week-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.4rem;flex-wrap:wrap;gap:1rem}
 .week-label{font-size:.72rem;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
 .week-selector{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
-.week-btn{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:.4rem .75rem;font-size:.8rem;font-weight:500;color:var(--indigo);cursor:pointer;transition:all .15s;font-family:inherit}
+.week-btn{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:.4rem .75rem;font-size:.8rem;font-weight:500;color:var(--indigo);cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap}
 .week-btn:hover{border-color:var(--arctic);color:var(--arctic)}
 .week-btn.active{background:var(--indigo);color:#fff;border-color:var(--indigo)}
 .view-toggle{display:flex;gap:.4rem}
@@ -200,7 +203,8 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
   .sug-actions{align-items:flex-start}
 }
 @media(max-width:800px){
-  header{position:static;height:auto;padding:.7rem 1rem;flex-wrap:wrap;gap:.5rem}
+  header{position:static;padding:.7rem 1rem;gap:.5rem}
+  .dash-nav{width:100%}
   .header-right{width:100%;justify-content:space-between}
   main{padding:1rem}
   .week-bar{flex-direction:column;align-items:stretch}
@@ -221,6 +225,11 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
 
 <header>
   <div class="logo">OLD QTR <span>/</span> Roast Planner</div>
+  <nav class="dash-nav" aria-label="Other dashboards">
+    <a id="link-kilos" href="roast.html">Kilos ordered</a>
+    <a id="link-wholesale" href="index.html">Wholesale analytics</a>
+    <a id="link-coldbrew" href="coldbrew.html">Cold brew</a>
+  </nav>
   <div class="header-right">
     <button id="refresh-btn" onclick="manualRefresh()" title="Pull the latest orders from Ordermentum. Takes about two minutes.">⟳ Update now</button>
     <span id="last-updated">Loading...</span>
@@ -236,7 +245,7 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
     <div>
       <div class="view-toggle">
         <button class="week-btn active" id="tab-planner" onclick="setView('planner')">This week</button>
-        <button class="week-btn" id="tab-season" onclick="setView('season')">Season</button>
+        <button class="week-btn" id="tab-season" onclick="setView('season')">Forecasting and projections</button>
       </div>
     </div>
     <div>
@@ -386,6 +395,13 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
 <footer>OQ Roast Planner · Kilos ordered sync from Ordermentum · Par, previous roast and venue allocation saved to Supabase</footer>
 
 <script>
+// GitHub Pages serves the files beside this page. The command centre serves them on short paths.
+if (/\/roast-planner\/?$/.test(location.pathname)) {
+  document.getElementById('link-kilos').href = '/kilos/';
+  document.getElementById('link-wholesale').href = '/wholesale/';
+  document.getElementById('link-coldbrew').href = '/coldbrew/';
+}
+
 const SUPABASE_URL = 'https://poswbggoxhnayvvubpao.supabase.co';
 const ANON_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvc3diZ2dveGhuYXl2dnVicGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjkxMTAsImV4cCI6MjA5NzA0NTExMH0.rT93P50Q8MyBT_6EvkLCW4XRL_vN8WzYmz3i6HZ_Z-0';
 
