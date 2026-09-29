@@ -16,10 +16,13 @@
 body{font-family:'Clash Grotesk',system-ui,sans-serif;background:var(--surface);color:var(--indigo);min-height:100vh}
 
 /* HEADER */
-header{background:var(--indigo);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic)}
+header{background:var(--indigo);padding:.55rem 2rem;display:flex;align-items:center;justify-content:space-between;min-height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic);gap:.75rem 1.25rem;flex-wrap:wrap}
 .logo{font-size:.7rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:#fff}
 .logo span{color:var(--arctic)}
-.header-right{display:flex;align-items:center;gap:1.5rem}
+.dash-nav{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.dash-nav a{background:transparent;border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:6px;padding:.32rem .7rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;text-decoration:none;white-space:nowrap;transition:all .15s}
+.dash-nav a:hover{border-color:var(--arctic);color:var(--arctic)}
+.header-right{display:flex;align-items:center;gap:1.5rem;margin-left:auto}
 #last-updated{font-size:.72rem;color:var(--arctic);font-family:'DM Mono',monospace;opacity:.8}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--apple);box-shadow:0 0 6px var(--apple)}
 #refresh-btn{background:transparent;border:1px solid var(--arctic);color:var(--arctic);border-radius:6px;padding:.32rem .75rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -143,7 +146,8 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 @media(max-width:900px){.scorecard{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){
   /* Header: unstick and wrap to two rows so nothing truncates */
-  header{position:static;height:auto;padding:.7rem 1rem;flex-wrap:wrap;gap:.5rem .75rem}
+  header{position:static;padding:.7rem 1rem;gap:.5rem .75rem}
+  .dash-nav{width:100%}
   .logo{font-size:.62rem;letter-spacing:.14em;line-height:1.4}
   .header-right{width:100%;justify-content:space-between;gap:.75rem}
   #last-updated{font-size:.65rem}
@@ -191,12 +195,24 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 
 <header>
   <div class="logo">OLD QTR <span>/</span> Kilos Ordered Tracker</div>
+  <nav class="dash-nav" aria-label="Other dashboards">
+    <a id="link-wholesale" href="index.html">Wholesale analytics</a>
+    <a id="link-coldbrew" href="coldbrew.html">Cold brew</a>
+    <a id="link-roast" href="roast_planner.html">Roast plan</a>
+  </nav>
   <div class="header-right">
     <button id="refresh-btn" onclick="manualRefresh()" title="Pull the latest orders from Ordermentum right now (~2 min)">⟳ Update now</button>
     <span id="last-updated">Loading...</span>
     <div class="dot"></div>
   </div>
 </header>
+<script>
+if (/\/kilos\/?$/.test(location.pathname)) {
+  document.getElementById('link-wholesale').href = '/wholesale/';
+  document.getElementById('link-coldbrew').href = '/coldbrew/';
+  document.getElementById('link-roast').href = '/roast-planner/';
+}
+</script>
 
 <div id="loading"><div class="spinner"></div><p>Pulling roast data...</p></div>
 
