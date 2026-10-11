@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OQ / Roast Planner</title>
+<link rel="icon" id="favicon" type="image/png" href="/favicon.png">
+<script>if (location.protocol === "file:" || /\.html$/.test(location.pathname)) document.getElementById("favicon").href = "favicon.png";</script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -16,14 +18,14 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Clash Grotesk',system-ui,sans-serif;background:var(--surface);color:var(--indigo);min-height:100vh}
 
-header{background:var(--indigo);padding:.55rem 2rem;display:flex;align-items:center;justify-content:space-between;min-height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic);gap:.75rem 1.25rem;flex-wrap:wrap}
-.logo{font-size:.7rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:#fff}
+header{background:var(--indigo);padding:.55rem 2rem;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic);gap:.75rem 1.25rem}
+.logo{justify-self:start;font-size:.7rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:#fff}
 .logo span{color:var(--arctic)}
-.dash-nav{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.dash-nav{justify-self:center;display:flex;align-items:center;justify-content:center;gap:.4rem;flex-wrap:wrap}
 .dash-nav a{background:transparent;border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:6px;padding:.32rem .7rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;text-decoration:none;white-space:nowrap;transition:all .15s}
 .dash-nav a:hover{border-color:var(--arctic);color:var(--arctic)}
 .dash-split{width:1px;height:16px;background:rgba(255,255,255,.28);margin:0 .2rem}
-.header-right{display:flex;align-items:center;gap:1.5rem;margin-left:auto}
+.header-right{justify-self:end;display:flex;align-items:center;gap:1.5rem}
 #last-updated{font-size:.72rem;color:var(--arctic);font-family:'DM Mono',monospace;opacity:.8}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--apple);box-shadow:0 0 6px var(--apple)}
 #refresh-btn{background:transparent;border:1px solid var(--arctic);color:var(--arctic);border-radius:6px;padding:.32rem .75rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -77,7 +79,8 @@ main{max-width:1240px;margin:0 auto;padding:1.5rem 2rem 2rem;display:none}
 .venue-balance{font-size:.78rem;color:var(--muted);margin-bottom:1.1rem;font-family:'DM Mono',monospace}
 .venue-balance.gap{color:#a85a10}
 
-.planner-head,.blend-row{display:grid;grid-template-columns:104px minmax(132px,168px) repeat(4,minmax(100px,1fr)) 112px;gap:.65rem .7rem;align-items:center}
+.planner-head,.blend-row{display:grid;grid-template-columns:104px minmax(132px,168px) repeat(4,minmax(100px,1fr)) 112px;gap:.65rem .7rem;align-items:start}
+.planner-head{align-items:end}
 .planner-head{padding:0 1.15rem .35rem 1.35rem}
 .planner-head span{font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .planner-grid{display:flex;flex-direction:column;gap:.6rem;margin-bottom:1.25rem}
@@ -118,17 +121,16 @@ main{max-width:1240px;margin:0 auto;padding:1.5rem 2rem 2rem;display:none}
 .tc-value{font-size:1.4rem;font-weight:700;color:var(--indigo);font-family:'DM Mono',monospace}
 .tc-sub{font-size:.68rem;color:var(--muted);margin-top:.2rem;font-family:'DM Mono',monospace}
 
-.session-footer{display:grid;grid-template-columns:1fr auto;gap:1.25rem;align-items:flex-end;margin:1.5rem 0 1rem}
-.notes-label{font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
-.notes-input{font-family:inherit;font-size:.82rem;color:var(--indigo);background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:.6rem .85rem;resize:vertical;min-height:3rem;outline:none;width:100%}
+.session-footer{display:flex;align-items:center;gap:1rem;margin:1.25rem 0 .5rem}
+.notes-label{grid-column:1;font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.notes-input{grid-column:1;grid-row:2;font-family:inherit;font-size:.82rem;color:var(--indigo);background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:.6rem .85rem;resize:vertical;min-height:3.4rem;height:100%;outline:none;width:100%}
 .notes-input:focus{border-color:var(--arctic)}
-.btn-save{background:var(--indigo);color:#fff;border:none;border-radius:10px;padding:1rem 1.6rem;font-family:inherit;font-size:.88rem;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap}
+.btn-save{grid-column:2;grid-row:2;height:100%;min-height:3.4rem;background:var(--indigo);color:#fff;border:none;border-radius:8px;padding:0 1.6rem;font-family:inherit;font-size:.88rem;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap}
 .btn-save:hover{background:var(--indigo-tint)}
 .btn-save:disabled{background:var(--border);color:var(--muted);cursor:not-allowed}
 .btn-save.saving{background:var(--arctic);color:var(--indigo)}
-.save-msg{font-size:.75rem;font-family:'DM Mono',monospace;margin-top:.45rem;min-height:1.2em}
+.save-msg{grid-column:1;grid-row:3;font-size:.75rem;font-family:'DM Mono',monospace;margin-top:.05rem;min-height:1.2em}
 .save-msg.ok{color:var(--apple)}.save-msg.err{color:var(--coral)}
-.btn-hint{font-size:.67rem;color:var(--muted);text-align:right;margin-top:.3rem}
 
 .setup-banner{background:rgba(240,83,75,.05);border:1.5px dashed var(--coral);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1.25rem;display:none}
 .setup-banner .sb-title{font-size:.85rem;font-weight:700;color:var(--coral);margin-bottom:.4rem}
@@ -204,8 +206,8 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
   .sug-actions{align-items:flex-start}
 }
 @media(max-width:800px){
-  header{position:static;padding:.7rem 1rem;gap:.5rem}
-  .dash-nav{width:100%}
+  header{display:flex;flex-wrap:wrap;position:static;padding:.7rem 1rem;gap:.5rem}
+  .dash-nav{width:100%;justify-content:center}
   .header-right{width:100%;justify-content:space-between}
   main{padding:1rem}
   .week-bar{flex-direction:column;align-items:stretch}
@@ -215,7 +217,8 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
   .week-btn{flex:0 0 auto}
   .venue-grid,.totals-bar,.season-cards{grid-template-columns:1fr 1fr}
   .session-footer{grid-template-columns:1fr}
-  .btn-hint{text-align:left}
+  .btn-save{grid-column:1;grid-row:3;height:3.4rem}
+  .save-msg{grid-row:4}
 }
 @media(max-width:520px){
   .venue-grid,.totals-bar,.season-cards{grid-template-columns:1fr}
@@ -230,6 +233,7 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
     <a id="link-kilos" href="roast.html">Kilos ordered</a>
     <a id="link-wholesale" href="index.html">Wholesale analytics</a>
     <a id="link-coldbrew" href="coldbrew.html">Cold brew</a>
+    <a id="link-delivery" href="local-delivery.html">Delivery run sheet</a>
     <span class="dash-split" aria-hidden="true"></span>
     <a href="https://app.ordermentum.com" target="_blank" rel="noopener">Ordermentum</a>
     <a href="https://app.hubspot.com" target="_blank" rel="noopener">HubSpot</a>
@@ -257,8 +261,6 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
       <div class="week-selector" id="week-selector"></div>
     </div>
   </div>
-  <div class="week-legend">Tuesday 12:00pm to the next Tuesday 11:59am. Tuesday morning is the moment to hit Update now, before the week closes and the roast is set.</div>
-
   <div class="week-hero">
     <div>
       <div class="week-hero-eyebrow" id="hero-eyebrow">Roast session</div>
@@ -275,27 +277,11 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
   </div>
 
   <div id="view-planner">
-    <div class="formula-bar">
-      <strong>Stock on hand</strong> = last week's par − this week's kilos ordered.
-      <span class="f-result">Kg to roast</span> = this week's par − stock on hand + venue milk assigned to this coffee.
-      When par stays the same, kg to roast equals kilos ordered plus that venue milk.
-    </div>
-    <p class="section-note">Blends are roasted in 25kg batches. Production usually wants an even number of batches, so Village Blend, Cloud Nine, Euphoria and Decaf are planned in 50kg steps. Vietnam K'Ho steps by 25kg.</p>
-    <div class="open-banner" id="open-banner" style="display:none">
-      This ordering week is still open, so kilos ordered will keep moving until Tuesday 11:59am. Hit Update now before the roast is locked in.
-    </div>
-    <div class="open-banner" id="stock-once" style="display:none">
-      No par was saved for last week, so type stock on hand this once. After you save, next week calculates it from that par.
-    </div>
-    <div class="open-banner" id="holiday-banner" style="display:none"></div>
-
     <div class="section-hd" style="margin-top:.25rem">
       <span class="section-title">Venue milk espresso — kilos ordered</span>
       <div class="section-line"></div>
     </div>
-    <p class="section-note">Each venue's kilos come from Ordermentum. Production chooses the coffee and types that amount on the blend it will go out as. Those kilos are added to kg to roast.</p>
     <div class="venue-grid" id="venue-grid"></div>
-    <div class="venue-balance" id="venue-balance"></div>
 
     <div class="planner-head" aria-hidden="true">
       <span title="What was actually roasted last week. Edit it if the roast differed from the saved plan.">Prev roasted</span>
@@ -307,29 +293,6 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
       <span title="Par minus stock, plus venue milk. Blends are planned in 50kg steps. Vietnam K'Ho steps by 25kg.">To roast</span>
     </div>
     <div class="planner-grid" id="planner-grid"></div>
-
-    <div class="totals-bar">
-      <div class="total-card">
-        <div class="tc-label">Kg ordered</div>
-        <div class="tc-value" id="total-ordered">—</div>
-        <div class="tc-sub">Wholesale, from Ordermentum</div>
-      </div>
-      <div class="total-card tawny">
-        <div class="tc-label">Stock on hand</div>
-        <div class="tc-value" id="total-stock">—</div>
-        <div class="tc-sub" id="total-stock-sub">Last week's par − ordered</div>
-      </div>
-      <div class="total-card grape">
-        <div class="tc-label">Venue milk assigned</div>
-        <div class="tc-value" id="total-venue">—</div>
-        <div class="tc-sub" id="total-venue-sub"></div>
-      </div>
-      <div class="total-card fire">
-        <div class="tc-label">Total to roast</div>
-        <div class="tc-value" id="total-roast">—</div>
-        <div class="tc-sub">Par − stock + venue milk</div>
-      </div>
-    </div>
   </div>
 
   <div id="view-season" style="display:none">
@@ -358,45 +321,13 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
   </div>
 
   <div class="session-footer">
-    <div>
-      <div class="notes-label">Session notes</div>
-      <textarea class="notes-input" id="session-notes" placeholder="Blend adjustments, substitutions, anything unusual this week..." oninput="markDirty()"></textarea>
-      <div class="save-msg" id="save-msg"></div>
-    </div>
-    <div>
-      <button class="btn-save" id="btn-save" onclick="saveSession()">Save roast plan</button>
-      <div class="btn-hint">Saves this ordering week to Supabase</div>
-    </div>
-  </div>
-
-  <div class="section-hd">
-    <span class="section-title">13-week history</span>
-    <div class="section-line"></div>
-    <button class="csv-btn" onclick="exportCSV()">↓ CSV</button>
-  </div>
-  <div class="table-wrap">
-    <table class="hist">
-      <thead>
-        <tr>
-          <th>Order week</th>
-          <th class="right">Village</th>
-          <th class="right">Cloud Nine</th>
-          <th class="right">Euphoria</th>
-          <th class="right">Decaf</th>
-          <th class="right">K'Ho</th>
-          <th class="right">Venue milk</th>
-          <th class="right">Total roasted</th>
-        </tr>
-      </thead>
-      <tbody id="history-body">
-        <tr><td colspan="8" class="empty-history">No saved plans yet.</td></tr>
-      </tbody>
-    </table>
+    <button class="btn-save" id="btn-save" onclick="saveSession()">Save roast plan</button>
+    <div class="save-msg" id="save-msg"></div>
   </div>
 
 </main>
 
-<footer>OQ Roast Planner · Kilos ordered sync from Ordermentum · Par, previous roast and venue allocation saved to Supabase</footer>
+<footer>OQ Roast Planner · Kilos ordered from Ordermentum</footer>
 
 <script>
 // GitHub Pages serves the files beside this page. The command centre serves them on short paths.
@@ -404,6 +335,7 @@ if (/\/roast-planner\/?$/.test(location.pathname)) {
   document.getElementById('link-kilos').href = '/kilos/';
   document.getElementById('link-wholesale').href = '/wholesale/';
   document.getElementById('link-coldbrew').href = '/coldbrew/';
+  document.getElementById('link-delivery').href = '/local-delivery/';
 }
 
 const SUPABASE_URL = 'https://poswbggoxhnayvvubpao.supabase.co';
@@ -645,10 +577,7 @@ function writeDraft() {
       stock: stockEl && !stockEl.readOnly ? stockEl.value : null,
     };
   });
-  const draft = {
-    notes: document.getElementById('session-notes')?.value ?? '',
-    blends,
-  };
+  const draft = { blends };
   try { sessionStorage.setItem(draftKey(currentWeek), JSON.stringify(draft)); } catch (e) {}
 }
 
@@ -658,7 +587,6 @@ function applyDraft(week) {
   if (!raw) return false;
   let draft;
   try { draft = JSON.parse(raw); } catch (e) { return false; }
-  if (draft.notes != null) document.getElementById('session-notes').value = draft.notes;
   BLENDS.forEach(b => {
     const d = draft.blends && draft.blends[b.key];
     if (!d) return;
@@ -765,18 +693,6 @@ function renderWeekSelector() {
   document.getElementById('hero-date').textContent = weekLabel(currentWeek);
   const live = isWeekInProgress(currentWeek);
   document.getElementById('wip-badge').style.display = live ? 'inline-flex' : 'none';
-  document.getElementById('open-banner').style.display = live ? '' : 'none';
-  const notes = holidayNote(currentWeek);
-  const cmp = comparisonWeek(currentWeek);
-  const holEl = document.getElementById('holiday-banner');
-  if (notes.length) {
-    holEl.style.display = '';
-    holEl.textContent = 'This week overlaps ' + notes.map(n => n.text).join('; ') + '. Public school dates change every year.' +
-      (cmp && cmp.priorText ? ' Last year is the same point in that break, not the same calendar date: ' + cmp.priorText + '.' : '');
-  } else {
-    holEl.style.display = 'none';
-    holEl.textContent = '';
-  }
 }
 
 function renderPlanner() {
@@ -793,9 +709,6 @@ function renderPlanner() {
     const prevShown = savedPrev != null && savedPrev !== '' ? savedPrev : (plannedRoast > 0 ? plannedRoast : '');
     const venue = extras.venue[code];
     const manualStock = pPar == null && plan ? plan[code + '_stock_kg'] : '';
-    const ctx = parContext(b.field, currentWeek);
-    const parBits = [];
-    if (ctx.recentAvg) parBits.push('Lately ' + Math.round(ctx.recentAvg) + 'kg/wk');
     return `
     <div class="blend-row">
       <div class="blend-bar" style="background:${b.color}"></div>
@@ -814,14 +727,12 @@ function renderPlanner() {
       <div class="input-group">
         <div class="input-label">Kg ordered</div>
         <input class="kg-input readonly" type="text" id="ordered-${b.key}" value="${inputVal(ordered)}" readonly tabindex="-1">
-        <div class="field-hint" id="ly-hint-${b.key}"></div>
       </div>
       <div class="input-group">
         <div class="input-label">Par level</div>
         <input class="kg-input" type="number" min="0" step="0.5" id="par-${b.key}"
           value="${par > 0 ? inputVal(par) : ''}" placeholder="0"
           oninput="onEdit('${b.key}')">
-        <div class="field-hint" id="par-hint-${b.key}">${parBits.join(' · ')}</div>
       </div>
       <div class="input-group">
         <div class="input-label">Stock on hand</div>
@@ -835,7 +746,6 @@ function renderPlanner() {
         <input class="kg-input" type="number" min="0" step="0.5" id="venue-${b.key}"
           value="${venue > 0 ? inputVal(venue) : ''}" placeholder="0"
           oninput="onEdit('${b.key}')">
-        <div class="field-hint">Adds to kg to roast</div>
       </div>
       <div class="input-group to-roast-group">
         <div class="input-label">To roast</div>
@@ -845,12 +755,7 @@ function renderPlanner() {
     </div>`;
   }).join('');
 
-  BLENDS.forEach(b => {
-    const ctx = parContext(b.field, currentWeek);
-    const hint = document.getElementById('ly-hint-' + b.key);
-    if (ctx.cmp && ctx.lastYear != null) hint.textContent = ctx.cmp.label + ' · ' + Math.round(ctx.lastYear) + 'kg';
-    updatePrevHint(b.key);
-  });
+  BLENDS.forEach(b => updatePrevHint(b.key));
 }
 
 function onEdit(key) {
@@ -951,36 +856,6 @@ function recalc(key) {
       }
     }
   }
-  updateTotals();
-}
-
-function venueOrderedTotal() {
-  return venueLines.reduce((s, r) => s + r.kg, 0);
-}
-
-function updateTotals() {
-  let ordered = 0, stock = 0, stockKnown = 0, venue = 0, roast = 0, roastKnown = 0;
-  BLENDS.forEach(b => {
-    ordered += orderedKg(b);
-    const st = stockState(b.key);
-    if (st.value != null) { stock += st.value; stockKnown++; }
-    venue += num(document.getElementById('venue-' + b.key)?.value);
-    const r = roastState(b.key);
-    if (r != null) { roast += r; roastKnown++; }
-  });
-  document.getElementById('total-ordered').textContent = fmtKg(ordered);
-  document.getElementById('total-stock').textContent = stockKnown ? fmtKg(stock) : '—';
-  document.getElementById('total-stock-sub').textContent = stockKnown === BLENDS.length
-    ? "Last week's par − ordered"
-    : 'Enter stock where last week has no par';
-  document.getElementById('total-venue').textContent = fmtKg(venue);
-  const need = venueOrderedTotal();
-  const sub = document.getElementById('total-venue-sub');
-  sub.textContent = need ? fmtKg(venue) + ' assigned of ' + fmtKg(need) + ' ordered' : 'Nothing ordered this week';
-  document.getElementById('total-roast').textContent = roastKnown ? fmtKg(roast) : '—';
-  const once = document.getElementById('stock-once');
-  if (once) once.style.display = BLENDS.some(b => prevPar(b) == null) ? '' : 'none';
-  updateVenueBalance();
 }
 
 function renderVenues() {
@@ -1008,65 +883,21 @@ function renderVenues() {
       <div class="vk">${fmtKg(c.kg)}</div>
       <div class="vs">Ordered</div>
     </div>`).join('');
-  updateVenueBalance();
 }
 
-function updateVenueBalance() {
-  const el = document.getElementById('venue-balance');
-  if (!el) return;
-  const need = venueOrderedTotal() || ((weeklyByWeek[currentWeek] && +weeklyByWeek[currentWeek].venue_milk_kg) || 0);
-  let assigned = 0;
-  BLENDS.forEach(b => { assigned += num(document.getElementById('venue-' + b.key)?.value); });
-  if (!need && !assigned) {
-    el.textContent = 'No venue milk ordered this week.';
-    el.className = 'venue-balance';
-    return;
-  }
-  const gap = need - assigned;
-  if (Math.abs(gap) < 0.5) {
-    el.textContent = fmtKg(assigned) + ' assigned, matching ' + fmtKg(need) + ' ordered.';
-    el.className = 'venue-balance';
-  } else if (gap > 0) {
-    el.textContent = fmtKg(assigned) + ' assigned of ' + fmtKg(need) + ' ordered. ' + fmtKg(gap) + ' still to put on a coffee.';
-    el.className = 'venue-balance gap';
-  } else {
-    el.textContent = fmtKg(assigned) + ' assigned against ' + fmtKg(need) + ' ordered. That is ' + fmtKg(-gap) + ' over.';
-    el.className = 'venue-balance gap';
-  }
-}
-
-function renderHistory() {
-  const tbody = document.getElementById('history-body');
-  const rows = Object.values(plans).sort((a, b) => b.week_start.localeCompare(a.week_start)).slice(0, 13);
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-history">No saved plans yet. Week tabs above open recent order weeks so the kilos can be compared. This table fills in as plans are saved.</td></tr>';
-    return;
-  }
-  const codes = ['vb','c9','eu','dc','kho'];
-  tbody.innerHTML = rows.map(row => {
-    const extras = extrasOf(row);
-    const venue = codes.reduce((s, c) => s + (parseFloat(extras.venue[c]) || 0), 0);
-    const total = codes.reduce((s, c) => s + (parseFloat(row[c + '_roast_kg']) || 0), 0);
-    const viewing = row.week_start === currentWeek;
-    const pill = row.week_start === openWeek ? '<span class="this-week-pill">This week</span>' : '';
-    const cell = k => (parseFloat(row[k]) > 0 ? fmtKg(row[k]) : '—');
-    return `<tr class="${viewing ? 'current-week-row' : ''}">
-      <td class="name-col">${weekLabel(row.week_start)}${pill}</td>
-      <td class="right">${cell('vb_roast_kg')}</td>
-      <td class="right">${cell('c9_roast_kg')}</td>
-      <td class="right">${cell('eu_roast_kg')}</td>
-      <td class="right">${cell('dc_roast_kg')}</td>
-      <td class="right">${cell('kho_roast_kg')}</td>
-      <td class="right">${venue > 0 ? fmtKg(venue) : '—'}</td>
-      <td class="right">${total > 0 ? fmtKg(total) : '—'}</td>
-    </tr>`;
-  }).join('');
+function planComplete(plan) {
+  if (!plan) return false;
+  return BLENDS.every(b => {
+    const v = plan[codeOf(b) + '_par_kg'];
+    return v != null && v !== '' && +v > 0;
+  });
 }
 
 function updateBadge(state) {
   const el = document.getElementById('session-badge');
   const map = {
     saved: ['badge-saved', 'Saved'],
+    progress: ['badge-unsaved', 'In progress'],
     unsaved: ['badge-unsaved', 'Unsaved'],
     draft: ['badge-draft', 'Draft'],
   };
@@ -1279,16 +1110,14 @@ async function renderAll() {
   const token = ++renderToken;
   renderWeekSelector();
   const plan = plans[currentWeek];
-  document.getElementById('session-notes').value = plan && plan.notes ? plan.notes : '';
   renderPlanner();
   await loadVenueOrders(currentWeek);
   if (token !== renderToken) return;
   renderVenues();
   const restored = applyDraft(currentWeek);
   BLENDS.forEach(b => recalc(b.key));
-  renderHistory();
   renderSeason();
-  updateBadge(restored ? 'unsaved' : (plan ? 'saved' : 'draft'));
+  updateBadge(restored ? 'unsaved' : (!plan ? 'draft' : (planComplete(plan) ? 'saved' : 'progress')));
 }
 
 async function saveSession() {
@@ -1300,43 +1129,51 @@ async function saveSession() {
   msg.textContent = '';
   msg.className = 'save-msg';
 
+  const blank = el => !el || el.value === '';
   const extras = { prev: {}, venue: {} };
   const payload = {
     week_start: currentWeek,
-    notes: document.getElementById('session-notes').value || null,
-    submitted_by: null,
     submitted_at: new Date().toISOString(),
   };
   BLENDS.forEach(b => {
     const code = codeOf(b);
-    const ordered = num(document.getElementById('ordered-' + b.key).value);
-    const par = num(document.getElementById('par-' + b.key).value);
+    const parEl = document.getElementById('par-' + b.key);
+    const venueEl = document.getElementById('venue-' + b.key);
+    const prevEl = document.getElementById('prev-' + b.key);
     const stock = stockState(b.key);
-    const venue = num(document.getElementById('venue-' + b.key).value);
-    const prevRaw = document.getElementById('prev-' + b.key).value;
     const roast = roastState(b.key);
-    extras.prev[code] = prevRaw === '' ? null : num(prevRaw);
-    extras.venue[code] = venue;
-    payload[code + '_ordered_kg'] = ordered;
-    payload[code + '_par_kg'] = par;
-    payload[code + '_stock_kg'] = stock.value == null ? 0 : Math.round(stock.value * 100) / 100;
-    payload[code + '_roast_kg'] = roast == null ? 0 : Math.round(roast * 100) / 100;
+    extras.prev[code] = blank(prevEl) ? null : num(prevEl.value);
+    extras.venue[code] = blank(venueEl) ? null : num(venueEl.value);
+    payload[code + '_ordered_kg'] = num(document.getElementById('ordered-' + b.key).value);
+    payload[code + '_par_kg'] = blank(parEl) ? null : num(parEl.value);
+    payload[code + '_stock_kg'] = stock.value == null ? null : Math.round(stock.value * 100) / 100;
+    payload[code + '_roast_kg'] = roast == null ? null : Math.round(roast * 100) / 100;
   });
   payload.venue_blend = JSON.stringify(extras);
 
   try {
-    const saved = await sbFetch('/rest/v1/roast_plan', {
-      method: 'POST',
-      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-      body: JSON.stringify(payload),
-    });
+    const prefer = { Prefer: 'resolution=merge-duplicates,return=representation' };
+    let saved;
+    try {
+      saved = await sbFetch('/rest/v1/roast_plan?on_conflict=week_start', {
+        method: 'POST',
+        headers: prefer,
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      if (!String(err.message).startsWith('409')) throw err;
+      saved = await sbFetch('/rest/v1/roast_plan?week_start=eq.' + currentWeek, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify(payload),
+      });
+    }
     plans[currentWeek] = (saved && saved[0]) || payload;
     clearDraft(currentWeek);
     dirty = false;
-    updateBadge('saved');
+    updateBadge(planComplete(plans[currentWeek]) ? 'saved' : 'progress');
     msg.textContent = 'Saved at ' + new Date().toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit' });
     msg.className = 'save-msg ok';
-    renderHistory();
     if (view === 'season') renderSeason();
   } catch (e) {
     msg.textContent = 'Save failed: ' + e.message;
@@ -1347,43 +1184,6 @@ async function saveSession() {
     btn.className = 'btn-save';
     btn.textContent = 'Save roast plan';
   }
-}
-
-function exportCSV() {
-  const headers = [
-    'Week Start','Order Week',
-    'VB Roast','C9 Roast','EU Roast','DC Roast','KHO Roast','Venue Milk','Total Roast',
-    'VB Ordered','C9 Ordered','EU Ordered','DC Ordered','KHO Ordered',
-    'VB Par','C9 Par','EU Par','DC Par','KHO Par',
-    'VB Stock','C9 Stock','EU Stock','DC Stock','KHO Stock',
-    'VB Prev Roast','C9 Prev Roast','EU Prev Roast','DC Prev Roast','KHO Prev Roast',
-    'Notes','Submitted At'
-  ];
-  const codes = ['vb','c9','eu','dc','kho'];
-  const rows = Object.values(plans).sort((a, b) => a.week_start.localeCompare(b.week_start)).map(r => {
-    const extras = extrasOf(r);
-    const venue = codes.reduce((s, c) => s + (parseFloat(extras.venue[c]) || 0), 0);
-    const total = codes.reduce((s, c) => s + (parseFloat(r[c + '_roast_kg']) || 0), 0);
-    return [
-      r.week_start, weekLabel(r.week_start),
-      r.vb_roast_kg||0, r.c9_roast_kg||0, r.eu_roast_kg||0, r.dc_roast_kg||0, r.kho_roast_kg||0,
-      venue.toFixed(2), total.toFixed(2),
-      r.vb_ordered_kg||0, r.c9_ordered_kg||0, r.eu_ordered_kg||0, r.dc_ordered_kg||0, r.kho_ordered_kg||0,
-      r.vb_par_kg||0, r.c9_par_kg||0, r.eu_par_kg||0, r.dc_par_kg||0, r.kho_par_kg||0,
-      r.vb_stock_kg||0, r.c9_stock_kg||0, r.eu_stock_kg||0, r.dc_stock_kg||0, r.kho_stock_kg||0,
-      extras.prev.vb ?? '', extras.prev.c9 ?? '', extras.prev.eu ?? '', extras.prev.dc ?? '', extras.prev.kho ?? '',
-      (r.notes || '').replace(/,/g, ' '),
-      r.submitted_at || ''
-    ].join(',');
-  });
-  const csv = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type:'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `OQ_Roast_Plan_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 function showSetupBanner() {
