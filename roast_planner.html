@@ -98,7 +98,7 @@ main{max-width:1240px;margin:0 auto;padding:1.5rem 2rem 2rem;display:none}
   padding:.4rem .5rem;width:100%;outline:none;transition:border-color .15s,background .15s;
   -moz-appearance:textfield;
 }
-.kg-input::-webkit-outer-spin-button,.kg-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.kg-input::-webkit-outer-spin-button,.kg-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;display:none}
 .kg-input:focus{border-color:var(--arctic);background:#fff}
 .kg-input.readonly{background:rgba(15,19,90,.03);border-color:rgba(15,19,90,.06);cursor:default;color:var(--indigo-light)}
 .kg-input.short{color:var(--coral);font-weight:700}
@@ -1197,6 +1197,14 @@ function setUpdated(iso) {
   const opts = { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hour12:true, timeZone:'Australia/Brisbane' };
   el.textContent = 'Last updated ' + new Date(iso).toLocaleString('en-AU', opts);
 }
+
+document.addEventListener('wheel', (e) => {
+  const t = e.target;
+  if (!(t instanceof HTMLInputElement) || t.type !== 'number') return;
+  if (document.activeElement !== t) return;
+  e.preventDefault();
+  t.blur();
+}, { passive: false, capture: true });
 
 async function init() {
   try {
