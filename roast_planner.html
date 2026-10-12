@@ -121,15 +121,15 @@ main{max-width:1240px;margin:0 auto;padding:1.5rem 2rem 2rem;display:none}
 .tc-value{font-size:1.4rem;font-weight:700;color:var(--indigo);font-family:'DM Mono',monospace}
 .tc-sub{font-size:.68rem;color:var(--muted);margin-top:.2rem;font-family:'DM Mono',monospace}
 
-.session-footer{display:flex;align-items:center;gap:1rem;margin:1.25rem 0 .5rem}
+.session-footer{display:flex;flex-direction:column;align-items:center;gap:.45rem;margin:1.25rem 0 .5rem}
 .notes-label{grid-column:1;font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .notes-input{grid-column:1;grid-row:2;font-family:inherit;font-size:.82rem;color:var(--indigo);background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:.6rem .85rem;resize:vertical;min-height:3.4rem;height:100%;outline:none;width:100%}
 .notes-input:focus{border-color:var(--arctic)}
-.btn-save{grid-column:2;grid-row:2;height:100%;min-height:3.4rem;background:var(--indigo);color:#fff;border:none;border-radius:8px;padding:0 1.6rem;font-family:inherit;font-size:.88rem;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap}
+.btn-save{min-height:3.4rem;background:var(--indigo);color:#fff;border:none;border-radius:8px;padding:0 1.6rem;font-family:inherit;font-size:.88rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
 .btn-save:hover{background:var(--indigo-tint)}
 .btn-save:disabled{background:var(--border);color:var(--muted);cursor:not-allowed}
 .btn-save.saving{background:var(--arctic);color:var(--indigo)}
-.save-msg{grid-column:1;grid-row:3;font-size:.75rem;font-family:'DM Mono',monospace;margin-top:.05rem;min-height:1.2em}
+.save-msg{font-size:.75rem;font-family:'DM Mono',monospace;min-height:1.2em;text-align:center}
 .save-msg.ok{color:var(--apple)}.save-msg.err{color:var(--coral)}
 
 .setup-banner{background:rgba(240,83,75,.05);border:1.5px dashed var(--coral);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1.25rem;display:none}
@@ -216,9 +216,7 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
   .week-selector{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;width:100%;max-width:100%;padding-bottom:.3rem}
   .week-btn{flex:0 0 auto}
   .venue-grid,.totals-bar,.season-cards{grid-template-columns:1fr 1fr}
-  .session-footer{grid-template-columns:1fr}
-  .btn-save{grid-column:1;grid-row:3;height:3.4rem}
-  .save-msg{grid-row:4}
+  .btn-save{height:3.4rem}
 }
 @media(max-width:520px){
   .venue-grid,.totals-bar,.season-cards{grid-template-columns:1fr}
