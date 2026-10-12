@@ -287,10 +287,10 @@ footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:.67rem;color:var(--m
       <span title="What was actually roasted last week. Edit it if the roast differed from the saved plan.">Prev roasted</span>
       <span>Coffee</span>
       <span title="Wholesale kilos ordered this week, from Ordermentum.">Kg ordered</span>
-      <span title="Target stock after this roast.">Par level</span>
-      <span title="Last week's par minus this week's kilos ordered.">Stock on hand</span>
+      <span title="Target stock after this roast.">DIH level</span>
+      <span title="Last week's DIH minus this week's kilos ordered.">Stock on hand</span>
       <span title="Venue milk espresso kilos to roast as this coffee.">Venue milk</span>
-      <span title="Par minus stock, plus venue milk. Blends are planned in 50kg steps. Vietnam K'Ho steps by 25kg.">To roast</span>
+      <span title="DIH minus stock, plus venue milk. Blends are planned in 50kg steps. Vietnam K'Ho steps by 25kg.">To roast</span>
     </div>
     <div class="planner-grid" id="planner-grid"></div>
   </div>
@@ -729,7 +729,7 @@ function renderPlanner() {
         <input class="kg-input readonly" type="text" id="ordered-${b.key}" value="${inputVal(ordered)}" readonly tabindex="-1">
       </div>
       <div class="input-group">
-        <div class="input-label">Par level</div>
+        <div class="input-label">DIH level</div>
         <input class="kg-input" type="number" min="0" step="0.5" id="par-${b.key}"
           value="${par > 0 ? inputVal(par) : ''}" placeholder="0"
           oninput="onEdit('${b.key}')">
@@ -775,7 +775,7 @@ function updatePrevHint(key) {
   const planned = +el.dataset.planned || 0;
   const typed = el.value === '' ? null : num(el.value);
   if (planned > 0 && typed != null && Math.abs(typed - planned) > 0.5) {
-    hint.textContent = 'Saved plan was ' + fmtKg(planned) + '. Stock still uses par.';
+    hint.textContent = 'Saved plan was ' + fmtKg(planned) + '. Stock still uses DIH.';
     hint.className = 'field-hint warn';
   } else if (planned > 0 && typed != null) {
     hint.textContent = "From last week's plan";
@@ -824,7 +824,7 @@ function recalc(key) {
     el.classList.add('readonly');
     el.value = inputVal(stock.value);
     el.classList.toggle('short', stock.value < -0.05);
-    hint.textContent = fmtKg(stock.prevPar) + ' par − ' + fmtKg(stock.ordered) + ' ordered';
+    hint.textContent = fmtKg(stock.prevPar) + ' DIH − ' + fmtKg(stock.ordered) + ' ordered';
     hint.className = 'field-hint';
   } else if (hint) {
     if (el) el.classList.remove('short');
@@ -843,7 +843,7 @@ function recalc(key) {
     } else if (roast <= 0) {
       out.textContent = '0kg';
       out.className = 'to-roast-value surplus';
-      if (rh) rh.textContent = 'On or above par';
+      if (rh) rh.textContent = 'On or above DIH';
     } else {
       out.textContent = fmtKg(roast);
       out.className = 'to-roast-value positive';
