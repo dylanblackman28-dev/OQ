@@ -168,11 +168,13 @@ def classify(name, sku):
     # (OQ-COF-WHS-FLT-*) is a single origin whose farm name contains "Village"
     # and was being counted as Village Blend.
     #   VG = Village Blend, HS = Cloud Nine, EPH = Euphoria, DC = Decaf
+    #   KHS = Vietnam K'Ho (retail parent OQ-COF-RT-KHS-KH)
     parts = s.split("-")
     token = parts[3] if len(parts) > 3 else ""
     BLEND_TOKENS = {
         "VG": "village_blend_kg", "HS": "cloud_nine_kg",
         "EPH": "euphoria_kg", "DC": "decaf_kg",
+        "KHS": "vietnam_kho_kg",
     }
     if token in BLEND_TOKENS:
         return BLEND_TOKENS[token]
@@ -232,11 +234,11 @@ def sync_week(sb, weeks_ago):
     blend_rows = []  # per-customer blend lines for the dashboard order modals
     order_count = 0
     rising_sun_dates = []
-    # Fields that get per-customer order detail on the dashboard.
-    # K'Ho and Rising Sun deliberately excluded — no order modal for those.
+    # Fields that get per-customer order detail. Pre-Packing reads K'Ho
+    # units from these lines. Rising Sun stays out — no order modal for it.
     BLEND_DETAIL_FIELDS = {
         "village_blend_kg", "cloud_nine_kg", "euphoria_kg", "decaf_kg",
-        "venue_milk_kg", "venue_black_kg",
+        "vietnam_kho_kg", "venue_milk_kg", "venue_black_kg",
     }
     # Bean/equipment SKU prefixes that legitimately mention "cold brew" but
     # are never brewed litres — not flagged as unknown variants
