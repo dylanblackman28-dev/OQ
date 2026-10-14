@@ -168,13 +168,14 @@ def classify(name, sku):
     # (OQ-COF-WHS-FLT-*) is a single origin whose farm name contains "Village"
     # and was being counted as Village Blend.
     #   VG = Village Blend, HS = Cloud Nine, EPH = Euphoria, DC = Decaf
-    #   KHS = Vietnam K'Ho (retail parent OQ-COF-RT-KHS-KH)
+    #   KHS = Vietnam K'Ho parent (OQ-COF-RT-KHS-KH)
+    #   KH = the bag lines actually ordered (OQ-COF-WHS-KH-250G/500G/1KG-WHL)
     parts = s.split("-")
     token = parts[3] if len(parts) > 3 else ""
     BLEND_TOKENS = {
         "VG": "village_blend_kg", "HS": "cloud_nine_kg",
         "EPH": "euphoria_kg", "DC": "decaf_kg",
-        "KHS": "vietnam_kho_kg",
+        "KHS": "vietnam_kho_kg", "KH": "vietnam_kho_kg",
     }
     if token in BLEND_TOKENS:
         return BLEND_TOKENS[token]
