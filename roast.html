@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OQ Kilos Ordered Tracker</title>
+<link rel="icon" id="favicon" type="image/png" href="/favicon.png">
+<script>if (location.protocol === "file:" || /\.html$/.test(location.pathname)) document.getElementById("favicon").href = "favicon.png";</script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -16,14 +18,14 @@
 body{font-family:'Clash Grotesk',system-ui,sans-serif;background:var(--surface);color:var(--indigo);min-height:100vh}
 
 /* HEADER */
-header{background:var(--indigo);padding:.55rem 2rem;display:flex;align-items:center;justify-content:space-between;min-height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic);gap:.75rem 1.25rem;flex-wrap:wrap}
-.logo{font-size:.7rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:#fff}
+header{background:var(--indigo);padding:.55rem 2rem;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:64px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--arctic);gap:.75rem 1.25rem}
+.logo{justify-self:start;font-size:.7rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:#fff}
 .logo span{color:var(--arctic)}
-.dash-nav{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.dash-nav{justify-self:center;display:flex;align-items:center;justify-content:center;gap:.4rem;flex-wrap:wrap}
 .dash-nav a{background:transparent;border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:6px;padding:.32rem .7rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;text-decoration:none;white-space:nowrap;transition:all .15s}
 .dash-nav a:hover{border-color:var(--arctic);color:var(--arctic)}
 .dash-split{width:1px;height:16px;background:rgba(255,255,255,.28);margin:0 .2rem}
-.header-right{display:flex;align-items:center;gap:1.5rem;margin-left:auto}
+.header-right{justify-self:end;display:flex;align-items:center;gap:1.5rem}
 #last-updated{font-size:.72rem;color:var(--arctic);font-family:'DM Mono',monospace;opacity:.8}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--apple);box-shadow:0 0 6px var(--apple)}
 #refresh-btn{background:transparent;border:1px solid var(--arctic);color:var(--arctic);border-radius:6px;padding:.32rem .75rem;font-size:.7rem;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -147,8 +149,8 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
 @media(max-width:900px){.scorecard{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){
   /* Header: unstick and wrap to two rows so nothing truncates */
-  header{position:static;padding:.7rem 1rem;gap:.5rem .75rem}
-  .dash-nav{width:100%}
+  header{display:flex;flex-wrap:wrap;position:static;padding:.7rem 1rem;gap:.5rem .75rem}
+  .dash-nav{width:100%;justify-content:center}
   .logo{font-size:.62rem;letter-spacing:.14em;line-height:1.4}
   .header-right{width:100%;justify-content:space-between;gap:.75rem}
   #last-updated{font-size:.65rem}
@@ -200,6 +202,8 @@ footer{text-align:center;padding:2rem;font-size:.68rem;color:var(--muted);letter
     <a id="link-wholesale" href="index.html">Wholesale analytics</a>
     <a id="link-coldbrew" href="coldbrew.html">Cold brew</a>
     <a id="link-roast" href="roast_planner.html">Roast plan</a>
+    <a id="link-plan" href="production_planner.html">Production plan</a>
+    <a id="link-delivery" href="local-delivery.html">Delivery run sheet</a>
     <span class="dash-split" aria-hidden="true"></span>
     <a href="https://app.ordermentum.com" target="_blank" rel="noopener">Ordermentum</a>
     <a href="https://app.hubspot.com" target="_blank" rel="noopener">HubSpot</a>
@@ -215,6 +219,8 @@ if (/\/kilos\/?$/.test(location.pathname)) {
   document.getElementById('link-wholesale').href = '/wholesale/';
   document.getElementById('link-coldbrew').href = '/coldbrew/';
   document.getElementById('link-roast').href = '/roast-planner/';
+  document.getElementById('link-plan').href = '/production-plan/';
+  document.getElementById('link-delivery').href = '/local-delivery/';
 }
 </script>
 
@@ -223,7 +229,7 @@ if (/\/kilos\/?$/.test(location.pathname)) {
 <main id="main">
 
   <div class="week-bar">
-    <span class="week-label">Week Starting <span class="wip-badge" id="wip-badge" style="display:none;margin-left:.75rem">Week in progress</span></span>
+    <span class="week-label">Order Week <span class="wip-badge" id="wip-badge" style="display:none;margin-left:.75rem">Week in progress</span></span>
     <div class="week-selector" id="week-selector"></div>
   </div>
   <div class="week-legend">
@@ -343,17 +349,16 @@ if (/\/kilos\/?$/.test(location.pathname)) {
 const SUPABASE_URL = 'https://poswbggoxhnayvvubpao.supabase.co';
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvc3diZ2dveGhuYXl2dnVicGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjkxMTAsImV4cCI6MjA5NzA0NTExMH0.rT93P50Q8MyBT_6EvkLCW4XRL_vN8WzYmz3i6HZ_Z-0';
 
-// detail:true = card is clickable and opens the per-customer order modal
-// (backed by the blend_orders table). K'Ho and Rising Sun intentionally omitted.
+// detail:true = card is clickable and opens the per-customer order modal.
 const BLENDS = [
   {field:'village_blend_kg', label:'Village Blend', color:'#46c4dc', detail:true},
   {field:'cloud_nine_kg',    label:'Cloud Nine',   color:'#61bb4b', detail:true},
   {field:'euphoria_kg',      label:'Euphoria',     color:'#f4932b', detail:true},
   {field:'decaf_kg',         label:'Decaf',        color:'#e0c23a', detail:true},
-  {field:'vietnam_kho_kg',   label:"Vietnam K'Ho", color:'#824e9f'},
+  {field:'vietnam_kho_kg',   label:"Vietnam K'Ho", color:'#824e9f', detail:true},
 ];
 const OTHER = [
-  {field:'rising_sun_kg',  label:'Rising Sun Roasters', color:'#f4932b', note:'Contract roasting'},
+  {field:'rising_sun_kg',  label:'Rising Sun Roasters', color:'#f4932b', note:'Contract roasting', detail:true},
   {field:'venue_milk_kg',  label:'Venue — Milk Espresso', color:'#824e9f', note:'OQ venues', detail:true},
   {field:'venue_black_kg', label:'Venue — Black Espresso', color:'#3a3f7d', note:'OQ venues', detail:true},
 ];
@@ -631,8 +636,16 @@ async function openBlendModal(field) {
   // items of the same blend, split by channel:
   //   BREWING = wholesale bags/drums the venue or cafe brews on site (OQ-COF-WHS,
   //             plus venue espresso SKUs OQ-COF-CAFE / OQ-COF-VEN)
-  //   RETAIL  = pre-packed bags they sell over the counter (OQ-COF-RT)
-  const channelOf = sku => ((sku || '').toUpperCase().split('-')[2] === 'RT') ? 'retail' : 'brewing';
+  //   RETAIL  = pre-packed bags, including K'Ho bags coded as wholesale SKUs.
+  const channelOf = (sku, name) => {
+    const parts = (sku || '').toUpperCase().split('-');
+    const token = parts[3] || '';
+    const n = (name || '').toLowerCase();
+    if (parts[2] === 'RT') return 'retail';
+    // Retail K'Ho bags are coded OQ-COF-WHS-KH even though the name says Retail.
+    if (token === 'KH' || token === 'KHS' || token === 'KHO' || n.includes('retail')) return 'retail';
+    return 'brewing';
+  };
   const grouped = {};
   all.filter(r => r.field === field).forEach(r => {
     const key = `${r.retailer_name}|${r.order_number || ''}`;
@@ -640,7 +653,7 @@ async function openBlendModal(field) {
       retailer_name: r.retailer_name, order_number: r.order_number,
       placed_at: r.placed_at, delivery_date: r.delivery_date, brewing: 0, retail: 0,
     };
-    grouped[key][channelOf(r.sku)] += +r.kg || 0;
+    grouped[key][channelOf(r.sku, r.product_name)] += +r.kg || 0;
   });
   const rows = Object.values(grouped)
     .sort((a, b) => (b.brewing + b.retail) - (a.brewing + a.retail));
@@ -667,11 +680,11 @@ async function openBlendModal(field) {
       <td class="num" data-label="OMO">${r.order_number || '—'}</td>
       <td class="muted" data-label="Placed">${fmtCbDate(r.placed_at)}</td>
       <td class="deliv" data-label="Delivery">${fmtCbDate(r.delivery_date)}</td>
-      <td class="qty" data-label="Brewing" style="text-align:right">${cell(r.brewing)}</td>
+      <td class="qty" data-label="Brewing" style="text-align:right;color:var(--indigo)">${cell(r.brewing)}</td>
       <td class="qty" data-label="Retail" style="text-align:right;color:var(--grape)">${cell(r.retail)}</td>
     </tr>`).join('')}
     <tr class="tot"><td class="tot-label" colspan="4" style="font-weight:700;padding-top:.7rem">Total ${fmtKg(tBrew + tRet)}</td>
-      <td class="qty" data-label="Brewing" style="text-align:right;font-weight:700;padding-top:.7rem">${fmtKg(tBrew)}</td>
+      <td class="qty" data-label="Brewing" style="text-align:right;font-weight:700;padding-top:.7rem;color:var(--indigo)">${fmtKg(tBrew)}</td>
       <td class="qty" data-label="Retail" style="text-align:right;font-weight:700;padding-top:.7rem;color:var(--grape)">${fmtKg(tRet)}</td></tr>
     </tbody></table>`;
 }

@@ -183,7 +183,9 @@ def classify(name, sku):
     }
     if token in BLEND_TOKENS:
         return BLEND_TOKENS[token]
-    if "k'ho" in n or "kho" in n or "vietnam" in n: return "vietnam_kho_kg"
+    # Name fallback for K'Ho only. "Vietnam" on its own is a single origin
+    # such as Ka Don Robusta, and must not be counted as K'Ho.
+    if "k'ho" in n or "k’ho" in n or "kho" in n: return "vietnam_kho_kg"
     # Single origin / filter roasts are never blends, whatever the name says
     if token == "FLT" or "filter roast" in n:
         return None
@@ -240,10 +242,10 @@ def sync_week(sb, weeks_ago):
     order_count = 0
     rising_sun_dates = []
     # Fields that get per-customer order detail. Pre-Packing reads K'Ho
-    # units from these lines. Rising Sun stays out — no order modal for it.
+    # and the venue cafe coffees from these lines.
     BLEND_DETAIL_FIELDS = {
         "village_blend_kg", "cloud_nine_kg", "euphoria_kg", "decaf_kg",
-        "vietnam_kho_kg", "venue_milk_kg", "venue_black_kg",
+        "vietnam_kho_kg", "rising_sun_kg", "venue_milk_kg", "venue_black_kg",
         "venue_kadon_kg", "venue_kinoy_kg", "venue_decaf_kg",
     }
     # Bean/equipment SKU prefixes that legitimately mention "cold brew" but
