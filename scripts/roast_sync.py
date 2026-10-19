@@ -34,7 +34,7 @@ class OMFetchError(RuntimeError):
     """A fetch we cannot proceed without (silently skipping it corrupts totals)."""
 
 
-def om_get(url, required=False, attempts=6):
+def om_get(url, required=False, attempts=12):
     """
     GET with retry + backoff.
 
@@ -43,10 +43,12 @@ def om_get(url, required=False, attempts=6):
     collapse — exactly the failure that understated the 25 Aug week. Anything we
     cannot do without is fetched with required=True, which raises rather than
     returning empty, so the run fails loudly instead of writing wrong numbers.
+    A backfill hits this after about an hour. Twelve attempts, honouring
+    Retry-After, ride out that window instead of abandoning the week.
     """
-    delay = 2.0
+    delay = 5.0
     last = "unknown"
-    for _ in range(attempts):
+    for attempt in range(1, attempts + 1):
         req = urllib.request.Request(url, headers={"x-api-key": OM_API_KEY})
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
@@ -62,14 +64,16 @@ def om_get(url, required=False, attempts=6):
                     wait = float(retry_after)
                 except (TypeError, ValueError):
                     wait = delay
-                time.sleep(min(wait, 60) + random.uniform(0, 0.4))
-                delay = min(delay * 2, 60)
+                wait = min(max(wait, 5.0), 180.0) + random.uniform(0, 1.0)
+                print(f"  Ordermentum {e.code}, waiting {wait:.0f}s ({attempt}/{attempts})")
+                time.sleep(wait)
+                delay = min(delay * 2, 90)
                 continue
             break
         except Exception as e:
             last = str(e)[:120]
             time.sleep(delay)
-            delay = min(delay * 2, 60)
+            delay = min(delay * 2, 90)
     if required:
         raise OMFetchError(f"Ordermentum fetch failed after {attempts} attempts "
                            f"({last}): {url}")
