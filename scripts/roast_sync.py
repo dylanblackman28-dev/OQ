@@ -158,8 +158,12 @@ def classify(name, sku):
     # in batches outside this tracker — deliberately not classified
     if "mae chedi" in n or "cold brew release" in n: return None
     if "oq cafe coffee" in n or "oq-cof-cafe" in s or "oq-cof-ven" in s:
-        if "milk" in n:  return "venue_milk_kg"
-        if "black" in n: return "venue_black_kg"
+        # These variants share MISC SKUs, so the name is what separates them.
+        if "milk" in n and "espresso" in n: return "venue_milk_kg"
+        if "black" in n and "espresso" in n: return "venue_black_kg"
+        if "ka don" in n: return "venue_kadon_kg"
+        if "kinoy" in n: return "venue_kinoy_kg"
+        if "decaf" in n and "barista" in n: return "venue_decaf_kg"
         return None
     if "rising sun" in n or "rsr" in s: return "rising_sun_kg"
 
@@ -240,6 +244,7 @@ def sync_week(sb, weeks_ago):
     BLEND_DETAIL_FIELDS = {
         "village_blend_kg", "cloud_nine_kg", "euphoria_kg", "decaf_kg",
         "vietnam_kho_kg", "venue_milk_kg", "venue_black_kg",
+        "venue_kadon_kg", "venue_kinoy_kg", "venue_decaf_kg",
     }
     # Bean/equipment SKU prefixes that legitimately mention "cold brew" but
     # are never brewed litres — not flagged as unknown variants
