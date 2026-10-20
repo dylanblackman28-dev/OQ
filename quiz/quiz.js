@@ -43,10 +43,23 @@
     });
   }
 
+  /* Fire an analytics event to whatever is on the page. We send to BOTH:
+       • gtag()   — GA4 installed as a direct gtag.js snippet (or GTM's gtag)
+       • dataLayer — Google Tag Manager containers
+     so tracking works regardless of how GA4 was wired up. If GA4 is present
+     only via Shopify's native Google channel (a sandboxed Web Pixel), neither
+     global is exposed to the page and events won't reach it — a theme-level
+     gtag snippet or GTM container is needed for that setup. Events are
+     prefixed oq_quiz_ (e.g. oq_quiz_start, oq_quiz_results). */
   function track(event, data) {
+    var name = 'oq_quiz_' + event;
+    var params = data || {};
+    try {
+      if (typeof window.gtag === 'function') window.gtag('event', name, params);
+    } catch (e) { /* analytics must never break the quiz */ }
     try {
       window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push(Object.assign({ event: 'oq_quiz_' + event }, data || {}));
+      window.dataLayer.push(Object.assign({ event: name }, params));
     } catch (e) { /* analytics must never break the quiz */ }
   }
 
@@ -464,6 +477,17 @@
     ]));
   };
 
+  /* Flatten the customer's answers into GA4-friendly params, e.g.
+     { answer_style: 'milk', answer_brew: 'espresso+coldbrew', answer_cups: 'c23' } */
+  App.prototype.answerParams = function () {
+    var self = this, out = {};
+    this.cfg.questions.forEach(function (q) {
+      var ids = asChoices(self.answers[q.id]).map(function (ch) { return ch.id; });
+      if (ids.length) out['answer_' + q.id] = ids.join('+');
+    });
+    return out;
+  };
+
   App.prototype.renderResults = function () {
     var self = this, cfg = this.cfg, c = cfg.copy;
     var res = computeResults(cfg, this.products, this.answers);
@@ -471,7 +495,11 @@
     cfg.questions.forEach(function (q) { if (q.type === 'size') cupsChoice = self.answers[q.id]; });
     var rec = cupsChoice ? recommendSize(cfg, cupsChoice.cupsLow) : null;
 
-    track('results', { count: res.list.length, relaxed: res.relaxedQuestions.join(',') });
+    track('results', Object.assign({
+      count: res.list.length,
+      relaxed: res.relaxedQuestions.join(','),
+      recommended: res.list.slice(0, 10).map(function (p) { return p.handle; }).join(','),
+    }, this.answerParams()));
 
     var head = [
       el('h2', { 'class': 'oqq-title', text: c.resultsTitle }),
@@ -493,8 +521,8 @@
         el('p', {}, [el('a', { href: (this.onStore ? '' : 'https://' + cfg.dataSource.storeDomain) + '/collections/all-coffee', text: 'Browse all coffee' })]),
       ]);
     } else {
-      body = el('div', { 'class': 'oqq-grid' }, res.list.map(function (p) {
-        return self.card(p, rec);
+      body = el('div', { 'class': 'oqq-grid' }, res.list.map(function (p, i) {
+        return self.card(p, rec, i);
       }));
     }
 
@@ -522,9 +550,18 @@
     return out.slice(0, 4);
   };
 
-  App.prototype.card = function (product, rec) {
+  App.prototype.card = function (product, rec, position) {
     var self = this, cfg = this.cfg, c = cfg.copy;
     var selected = pickVariant(cfg, product, rec && rec.size);
+
+    /* fired when the customer clicks through to a recommended coffee */
+    function clickThrough() {
+      track('product_click', {
+        product: product.handle,
+        variant: selected ? selected.id : '',
+        position: (position || 0) + 1,
+      });
+    }
 
     var priceEl = el('div', { 'class': 'oqq-price', text: selected ? '$' + selected.price.toFixed(2) : '' });
     var atc;
@@ -604,20 +641,20 @@
     });
 
     return el('div', { 'class': 'oqq-card' }, [
-      el('a', { 'class': 'oqq-card-img', href: this.productUrl(product, selected), target: '_top' }, [
+      el('a', { 'class': 'oqq-card-img', href: this.productUrl(product, selected), target: '_top', onclick: clickThrough }, [
         product.image ? el('img', { src: product.image, alt: product.title, loading: 'lazy' }) : null,
       ]),
       el('div', { 'class': 'oqq-card-body' }, [
         badges.length ? el('div', { 'class': 'oqq-badges' }, badges) : null,
         el('h3', { 'class': 'oqq-card-title' }, [
-          el('a', { href: this.productUrl(product, selected), target: '_top', text: product.title }),
+          el('a', { href: this.productUrl(product, selected), target: '_top', text: product.title, onclick: clickThrough }),
         ]),
         methodChips.length ? el('div', { 'class': 'oqq-method-chips' }, methodChips) : null,
         sizeBtns.length ? el('div', { 'class': 'oqq-sizes' }, sizeBtns) : null,
         priceEl,
         atc,
         el('div', { 'class': 'oqq-card-links' }, [
-          el('a', { href: this.productUrl(product, selected), target: '_top', text: c.viewProduct }),
+          el('a', { href: this.productUrl(product, selected), target: '_top', text: c.viewProduct, onclick: clickThrough }),
         ]),
       ]),
     ]);
